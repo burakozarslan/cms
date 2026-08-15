@@ -3,6 +3,7 @@ schema: spec-driven
 context: |
   Tech Stack:
     - Framework: Next.js (App Router, Server Actions, Route Handlers)
+    - Design: FlyonUI (custom component library based on Flyon's custom Tailwind CSS design system) (No Shadcn UI or other UI library)
     - Database: SQLite (via better-sqlite3 or libSQL / Turso for edge/serverless)
     - Query Layer: Kysely (Dynamic Query Builder, zero-codegen at runtime)
     - Authentication: Auth.js / NextAuth (Session-based, multi-tenant aware with tenantId isolation)
@@ -49,6 +50,9 @@ operations:
   apply:
     guidance:
       - Implement code changes according to the task list
+      - Use FlyonUI components instead of raw Tailwind CSS (No Shadcn UI or other UI library). Keep consistency with other parts of the system.
+      - Create components if needed and import them from the '@frontend/ui' package.
+      - Don't import FlyonUI components directly in Next.js pages or components. Create a wrapper component in the '@frontend/ui' folder that imports FlyonUI components and exports them if needed. This is to keep the changes isolated in the @frontend/ui package.
       - Ensure all dynamic Kysely queries explicitly parameterize JSON keys and values
       - Ensure Cloudinary `api_secret` is never exposed in client bundles or public endpoints
       - Add Jest and React Testing Library tests covering all Given/When/Then scenarios
