@@ -543,6 +543,44 @@ export async function deleteField(
   return { ok: true };
 }
 
+/** Drives the delete confirmation: "N entries will be deleted". */
+export async function countEntriesByCollection(
+  tenantId: string,
+  collectionId: string,
+): Promise<number> {
+  const row = await getTenantDb(tenantId)
+    .selectFrom("entries")
+    .select((eb) => eb.fn.countAll().as("count"))
+    .where("collection_id", "=", collectionId)
+    .executeTakeFirst();
+
+  return Number(row?.count ?? 0);
+}
+
+/**
+ * Hard-delete a collection.
+ *
+ * `fields.collection_id` and `entries.collection_id` cascade, and
+ * `entry_values` cascades from both `entries` and `fields`, so the
+ * collection's fields, entries, and entry values go with it — no orphan can
+ * survive.
+ */
+export async function deleteCollection(
+  tenantId: string,
+  projectId: string,
+  collectionId: string,
+): Promise<MutationResult> {
+  const collection = await findCollection(tenantId, projectId, collectionId);
+  if (!collection) return NOT_FOUND;
+
+  await getTenantDb(tenantId)
+    .deleteFrom("collections")
+    .where("id", "=", collectionId)
+    .execute();
+
+  return { ok: true };
+}
+
 /** Designate the field whose value labels this collection's entries. */
 export async function setTitleField(
   tenantId: string,

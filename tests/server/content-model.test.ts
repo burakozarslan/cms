@@ -380,6 +380,74 @@ describe("deleting a field", () => {
   });
 });
 
+describe("deleting a collection", () => {
+  it("counts the affected entries for the confirmation", async () => {
+    const collection = await makeCollection(tenant, project, "Count Entries");
+    const title = await makeField(tenant, collection, {
+      key: "title",
+      widget: "string",
+    });
+
+    for (const name of ["One", "Two"]) {
+      await makeEntry(tenant, collection, { [title]: name });
+    }
+
+    await expect(
+      collections.countEntriesByCollection(tenant, collection),
+    ).resolves.toBe(2);
+  });
+
+  it("cascades to fields, entries, and entry values and leaves siblings intact", async () => {
+    const doomed = await makeCollection(tenant, project, "Doomed");
+    const sibling = await makeCollection(tenant, project, "Sibling");
+
+    const doomedField = await makeField(tenant, doomed, {
+      key: "title",
+      widget: "string",
+    });
+    const doomedEntry = await makeEntry(tenant, doomed, {
+      [doomedField]: "Gone",
+    });
+
+    const siblingField = await makeField(tenant, sibling, {
+      key: "title",
+      widget: "string",
+    });
+    const siblingEntry = await makeEntry(tenant, sibling, {
+      [siblingField]: "Still here",
+    });
+
+    const result = await collections.deleteCollection(tenant, project, doomed);
+    expect(result.ok).toBe(true);
+
+    await expect(
+      collections.findCollectionById(tenant, doomed),
+    ).resolves.toBeUndefined();
+    await expect(collections.findField(tenant, doomed, doomedField)).resolves.toBeUndefined();
+    await expect(entries.findEntry(tenant, doomed, doomedEntry)).resolves.toBeUndefined();
+
+    const remaining = await collections.findCollectionById(tenant, sibling);
+    expect(remaining).toBeDefined();
+    await expect(
+      entries.findEntry(tenant, sibling, siblingEntry),
+    ).resolves.toBeDefined();
+  });
+
+  it("refuses to delete a collection from another tenant's project", async () => {
+    const other = await makeTenant("other-collection-delete@example.com");
+    const otherProject = await makeProject(other, "Theirs");
+    const otherCollection = await makeCollection(other, otherProject, "Theirs");
+
+    await expect(
+      collections.deleteCollection(tenant, otherProject, otherCollection),
+    ).resolves.toEqual({ ok: false, error: "NOT_FOUND" });
+
+    await expect(
+      collections.findCollectionById(other, otherCollection),
+    ).resolves.toBeDefined();
+  });
+});
+
 describe("resolving the display title field", () => {
   it("prefers the designated field", async () => {
     const collection = await makeCollection(tenant, project, "Designated");

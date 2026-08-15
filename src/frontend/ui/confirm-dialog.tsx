@@ -54,7 +54,11 @@ export function ConfirmDialog({
 
       <dialog
         ref={ref}
-        className="modal-content bg-base-100 m-auto w-full max-w-md rounded-lg p-0 shadow-lg backdrop:bg-black/40"
+        className={
+          open
+            ? "modal-content bg-base-100 m-auto w-full max-w-md rounded-lg p-0 shadow-lg backdrop:bg-black/40"
+            : "hidden"
+        }
         onClose={() => setOpen(false)}
         aria-labelledby="confirm-dialog-title"
       >

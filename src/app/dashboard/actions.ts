@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { createProject } from "@/lib/projects/service";
+import { createProject, deleteProject } from "@/lib/projects/service";
 
 export type CreateProjectState = {
   error?: string;
@@ -26,4 +26,15 @@ export async function createProjectAction(
 
   revalidatePath("/dashboard");
   redirect(`/dashboard/${result.project.id}`);
+}
+
+export async function deleteProjectAction(formData: FormData): Promise<void> {
+  const session = await requireSession();
+  if (!session) redirect("/login");
+
+  const projectId = String(formData.get("projectId") ?? "");
+
+  await deleteProject(session.user.tenantId, projectId);
+
+  revalidatePath("/dashboard");
 }
