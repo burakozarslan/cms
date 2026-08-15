@@ -26,7 +26,7 @@ export function Input({ label, error, className = "", id, ...props }: InputProps
         {...props}
       />
       {error ? (
-        <span id={inputId ? `${inputId}-error` : undefined} className="label-text-alt text-error">
+        <span id={inputId ? `${inputId}-error` : undefined} className="helper-text text-error">
           {error}
         </span>
       ) : null}

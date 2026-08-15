@@ -11,7 +11,7 @@ export type { ButtonProps } from "./button";
 export { Input } from "./input";
 export type { InputProps } from "./input";
 
-export { Card, CardBody, CardTitle } from "./card";
+export { Card, CardHeader, CardBody, CardTitle, CardFooter, CardActions } from "./card";
 export type { CardProps } from "./card";
 
 export { Alert } from "./alert";
