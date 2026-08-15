@@ -38,7 +38,7 @@ function storedRow(overrides: Partial<StoredFieldRow> = {}): StoredFieldRow {
 }
 
 describe("the widget type set", () => {
-  it("offers exactly the six shipped types", () => {
+  it("offers exactly the seven shipped types", () => {
     expect([...widgetTypes]).toEqual([
       "string",
       "text",
@@ -46,17 +46,13 @@ describe("the widget type set", () => {
       "number",
       "boolean",
       "datetime",
+      "richtext",
     ]);
-  });
-
-  it("does not offer richtext", () => {
-    // Deferred deliberately; it must not appear in the type picker.
-    expect(widgetTypes).not.toContain("richtext");
   });
 
   it("rejects a widget type outside the supported set", () => {
     const result = fieldWidgetSchema.safeParse({
-      widget: "richtext",
+      widget: "wysiwyg",
       config: {},
     });
     expect(result.success).toBe(false);
@@ -263,6 +259,94 @@ describe("datetime widget", () => {
   });
 });
 
+describe("richtext widget", () => {
+  const emptyDoc = {
+    root: {
+      children: [
+        {
+          children: [],
+          direction: null,
+          format: "",
+          indent: 0,
+          type: "paragraph",
+          version: 1,
+        },
+      ],
+      direction: null,
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+  };
+
+  const docWithText = {
+    root: {
+      children: [
+        {
+          children: [
+            {
+              detail: 0,
+              format: 1,
+              mode: "normal",
+              style: "",
+              text: "Hello",
+              type: "text",
+              version: 1,
+            },
+          ],
+          direction: null,
+          format: "",
+          indent: 0,
+          type: "paragraph",
+          version: 1,
+        },
+      ],
+      direction: null,
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+  };
+
+  it("accepts only an empty config", () => {
+    expect(config("richtext", {}).success).toBe(true);
+    expect(config("richtext", { rows: 5 }).success).toBe(false);
+  });
+
+  it("accepts a well-formed serialized document", () => {
+    expect(value("richtext", {}, docWithText).success).toBe(true);
+  });
+
+  it("rejects a non-document value", () => {
+    expect(value("richtext", {}, "not a document").success).toBe(false);
+    expect(value("richtext", {}, 42).success).toBe(false);
+    expect(value("richtext", {}, { foo: "bar" }).success).toBe(false);
+  });
+
+  it("reports an untouched document as empty", () => {
+    const widget = widgetDefinition("richtext");
+    expect(widget.isEmpty?.(emptyDoc, {})).toBe(true);
+  });
+
+  it("reports a document with visible text as not empty", () => {
+    const widget = widgetDefinition("richtext");
+    expect(widget.isEmpty?.(docWithText, {})).toBe(false);
+  });
+
+  it("treats undefined and null as empty", () => {
+    const widget = widgetDefinition("richtext");
+    expect(widget.isEmpty?.(undefined, {})).toBe(true);
+    expect(widget.isEmpty?.(null, {})).toBe(true);
+  });
+
+  it("does not report a malformed value as empty — it is a structural problem, not an absence", () => {
+    const widget = widgetDefinition("richtext");
+    expect(widget.isEmpty?.({ foo: "bar" }, {})).toBe(false);
+  });
+});
+
 describe("cross-type configuration", () => {
   it("rejects select options on a string field", () => {
     expect(
@@ -301,11 +385,11 @@ describe("parseFieldConfig — validating stored rows on read", () => {
   });
 
   it("reports an unknown widget type rather than throwing", () => {
-    const parsed = parseFieldConfig(storedRow({ widget: "richtext" }));
+    const parsed = parseFieldConfig(storedRow({ widget: "wysiwyg" }));
 
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
-    expect(parsed.reason).toMatch(/richtext/);
+    expect(parsed.reason).toMatch(/wysiwyg/);
   });
 
   it("reports unparseable JSON rather than throwing", () => {

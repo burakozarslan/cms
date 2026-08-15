@@ -28,7 +28,7 @@ The system SHALL let an authenticated tenant create a named collection within on
 - **THEN** the system denies the request and creates no collection
 
 ### Requirement: Tenant can add fields backed by widget types
-The system SHALL let a tenant add fields to a collection, each field specifying a widget type drawn from the supported set — `string`, `text`, `select`, `number`, `boolean`, `datetime` — together with a machine key, a display label, a required flag, and widget-specific configuration.
+The system SHALL let a tenant add fields to a collection, each field specifying a widget type drawn from the supported set — `string`, `text`, `select`, `number`, `boolean`, `datetime`, `richtext` — together with a machine key, a display label, a required flag, and widget-specific configuration.
 
 #### Scenario: Field created with a supported widget type
 - **GIVEN** a tenant is editing a collection they own
@@ -40,10 +40,10 @@ The system SHALL let a tenant add fields to a collection, each field specifying 
 - **WHEN** the system validates it
 - **THEN** the submission is rejected with a validation error and no field is created
 
-#### Scenario: Richtext is not yet offered
+#### Scenario: Richtext is offered
 - **GIVEN** a tenant is choosing a widget type for a new field
 - **WHEN** the widget type list is presented
-- **THEN** `richtext` is not among the selectable options
+- **THEN** `richtext` is among the selectable options, no longer excluded now that this widget type ships
 
 ### Requirement: Widget configuration is validated against the widget type
 The system SHALL validate a field's configuration against a schema determined by its widget type, and SHALL reject configuration that does not match.

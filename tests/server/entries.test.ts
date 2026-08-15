@@ -129,6 +129,137 @@ describe("creating and editing entries", () => {
   });
 });
 
+describe("richtext values", () => {
+  const doc = {
+    root: {
+      children: [
+        {
+          children: [
+            {
+              detail: 0,
+              format: 1,
+              mode: "normal",
+              style: "",
+              text: "Hello, world",
+              type: "text",
+              version: 1,
+            },
+          ],
+          direction: null,
+          format: "",
+          indent: 0,
+          type: "paragraph",
+          version: 1,
+        },
+      ],
+      direction: null,
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+  };
+
+  const emptyDoc = {
+    root: {
+      children: [
+        {
+          children: [],
+          direction: null,
+          format: "",
+          indent: 0,
+          type: "paragraph",
+          version: 1,
+        },
+      ],
+      direction: null,
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+  };
+
+  it("stores and reads back a document unchanged", async () => {
+    const collection = await makeCollection(tenant, project, "Articles");
+    const body = await makeField(tenant, collection, {
+      key: "body",
+      widget: "richtext",
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: { [body]: doc },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entry.values[body]).toEqual(doc);
+  });
+
+  it("rejects a value that is not a well-formed document", async () => {
+    const collection = await makeCollection(tenant, project, "Malformed");
+    const body = await makeField(tenant, collection, {
+      key: "body",
+      widget: "richtext",
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: { [body]: { not: "a document" } },
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("names the field when a required richtext value is an untouched empty document", async () => {
+    const collection = await makeCollection(tenant, project, "RequiredBody");
+    const body = await makeField(tenant, collection, {
+      key: "body",
+      label: "Body",
+      widget: "richtext",
+      required: true,
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: { [body]: emptyDoc },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.error !== "INVALID") return;
+    expect(result.fieldErrors[body]?.[0]).toMatch(/Body is required/);
+  });
+
+  it("accepts a required richtext field once it has visible text", async () => {
+    const collection = await makeCollection(tenant, project, "RequiredBodyOk");
+    const body = await makeField(tenant, collection, {
+      key: "body",
+      widget: "richtext",
+      required: true,
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: { [body]: doc },
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("stores no row for an optional richtext field left as an untouched empty document", async () => {
+    const collection = await makeCollection(tenant, project, "OptionalBody");
+    const body = await makeField(tenant, collection, {
+      key: "body",
+      widget: "richtext",
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: { [body]: emptyDoc },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entry.values[body]).toBeUndefined();
+  });
+});
+
 describe("server-side value validation", () => {
   it("rejects a number beyond its configured maximum", async () => {
     const collection = await makeCollection(tenant, project, "Bounds");

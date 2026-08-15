@@ -1,6 +1,8 @@
 import { Input, Select, Switch, Textarea } from "@frontend/ui";
 import { valueInputName, type ParsedField } from "@/lib/widgets";
 
+import { RichTextEditor } from "./richtext-editor";
+
 /**
  * The input for one field, chosen by its widget type.
  *
@@ -137,5 +139,19 @@ export function ValueInput({
         />
       );
     }
+
+    // The only widget that mounts a client island: everything above stays a
+    // plain server-renderable control (design decision 12 in
+    // add-project-widgets; design decision 5 in add-richtext-widget).
+    case "richtext":
+      return (
+        <RichTextEditor
+          fieldId={field.id}
+          label={field.label}
+          required={field.required}
+          value={value}
+          error={error}
+        />
+      );
   }
 }

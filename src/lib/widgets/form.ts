@@ -99,6 +99,9 @@ export function configFromForm(
     case "boolean":
       return {};
 
+    case "richtext":
+      return {};
+
     case "datetime":
       return {
         dateOnly: checkbox(form, "config.dateOnly"),
@@ -151,6 +154,18 @@ function valueFromForm(field: ParsedField, form: FormData): unknown {
       if (typeof raw !== "string" || raw.trim() === "") return "";
       // valueType "string" keeps the textual form; the others become numbers.
       return config.valueType === "string" ? raw : Number(raw);
+    }
+
+    case "richtext": {
+      const raw = form.get(name);
+      if (typeof raw !== "string" || raw.trim() === "") return undefined;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        // Let the value schema's own validation produce the user-facing
+        // error, rather than throwing during form parsing.
+        return raw;
+      }
     }
 
     default:

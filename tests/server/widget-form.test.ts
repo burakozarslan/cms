@@ -85,6 +85,14 @@ describe("configFromForm", () => {
     expect(config).toEqual({ min: 1, max: 10, step: 0.5, valueType: "float" });
   });
 
+  it("produces an empty config for a richtext field, which is what it accepts", () => {
+    const config = compactConfig(configFromForm("richtext", form({})));
+    expect(config).toEqual({});
+    expect(
+      fieldWidgetSchema.safeParse({ widget: "richtext", config }).success,
+    ).toBe(true);
+  });
+
   it("produces an empty config for a boolean, which is what it accepts", () => {
     const config = compactConfig(
       // Stray keys from a previously selected widget type must not leak through.
@@ -182,6 +190,29 @@ describe("valuesFromForm", () => {
     );
 
     expect(values).toEqual({ f1: "Mine" });
+  });
+
+  it("parses the richtext hidden input's JSON into a document", () => {
+    const field = fieldOf("f1", "richtext");
+    const doc = { root: { type: "root", children: [] } };
+
+    expect(
+      valuesFromForm([field], form({ [valueInputName("f1")]: JSON.stringify(doc) })),
+    ).toEqual({ f1: doc });
+  });
+
+  it("reads a blank richtext submission as absent, not as an empty string", () => {
+    const field = fieldOf("f1", "richtext");
+    expect(valuesFromForm([field], form({ [valueInputName("f1")]: "" }))).toEqual(
+      {},
+    );
+  });
+
+  it("passes malformed richtext JSON through as-is, for the value schema to reject", () => {
+    const field = fieldOf("f1", "richtext");
+    expect(
+      valuesFromForm([field], form({ [valueInputName("f1")]: "{not json" })),
+    ).toEqual({ f1: "{not json" });
   });
 
   it("skips a misconfigured field instead of guessing its shape", () => {

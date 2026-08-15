@@ -3,6 +3,7 @@ import { z } from "zod";
 import { booleanWidget } from "./boolean";
 import { datetimeWidget } from "./datetime";
 import { numberWidget } from "./number";
+import { richtextWidget } from "./richtext";
 import { selectWidget } from "./select";
 import { stringWidget } from "./string";
 import { textWidget } from "./text";
@@ -19,10 +20,11 @@ import type { WidgetDefinition, WidgetType } from "./types";
  */
 export type ErasedWidget = Omit<
   WidgetDefinition<unknown>,
-  "configSchema" | "valueSchema"
+  "configSchema" | "valueSchema" | "isEmpty"
 > & {
   readonly configSchema: z.ZodType;
   valueSchema(config: unknown): z.ZodType;
+  isEmpty?(value: unknown, config: unknown): boolean;
 };
 
 function erase<TConfig>(definition: WidgetDefinition<TConfig>): ErasedWidget {
@@ -33,6 +35,9 @@ function erase<TConfig>(definition: WidgetDefinition<TConfig>): ErasedWidget {
     icon: definition.icon,
     configSchema: definition.configSchema as z.ZodType,
     valueSchema: (config) => definition.valueSchema(config as TConfig),
+    isEmpty: definition.isEmpty
+      ? (value, config) => definition.isEmpty!(value, config as TConfig)
+      : undefined,
   };
 }
 
@@ -50,9 +55,10 @@ export const widgets: Record<WidgetType, ErasedWidget> = {
   number: erase(numberWidget),
   boolean: erase(booleanWidget),
   datetime: erase(datetimeWidget),
+  richtext: erase(richtextWidget),
 };
 
-/** Ordered for the type picker. `richtext` is deliberately not here. */
+/** Ordered for the type picker. */
 export const widgetTypes = [
   "string",
   "text",
@@ -60,6 +66,7 @@ export const widgetTypes = [
   "number",
   "boolean",
   "datetime",
+  "richtext",
 ] as const satisfies ReadonlyArray<WidgetType>;
 
 export const widgetTypeSchema = z.enum(widgetTypes);
@@ -88,6 +95,10 @@ export const fieldWidgetSchema = z.discriminatedUnion("widget", [
   z.object({
     widget: z.literal("datetime"),
     config: datetimeWidget.configSchema,
+  }),
+  z.object({
+    widget: z.literal("richtext"),
+    config: richtextWidget.configSchema,
   }),
 ]);
 

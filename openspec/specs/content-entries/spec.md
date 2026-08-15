@@ -33,7 +33,7 @@ The system SHALL render each field of a collection using the input appropriate t
 #### Scenario: Widget inputs
 - **GIVEN** a collection containing one field of each supported widget type
 - **WHEN** the entry editor renders
-- **THEN** `string` renders a single-line text input, `text` a multi-line textarea, `select` a dropdown of its configured options, `number` a numeric input honouring its configured bounds and step, `boolean` a toggle, and `datetime` a date-and-time picker
+- **THEN** `string` renders a single-line text input, `text` a multi-line textarea, `select` a dropdown of its configured options, `number` a numeric input honouring its configured bounds and step, `boolean` a toggle, `datetime` a date-and-time picker, and `richtext` a formatting-capable rich text editor
 
 #### Scenario: Fields render in their defined order
 - **GIVEN** a collection whose fields are ordered A, B, C
@@ -77,6 +77,11 @@ The system SHALL validate every submitted value on the server against a schema d
 - **GIVEN** a field marked required
 - **WHEN** an entry is saved with it empty
 - **THEN** the system rejects the save with a validation error naming that field
+
+#### Scenario: Richtext document must be structurally valid
+- **GIVEN** a `richtext` field
+- **WHEN** a save is submitted with a value that is not a well-formed document
+- **THEN** the system rejects the save with a validation error
 
 #### Scenario: Validation reflects the current field definitions
 - **GIVEN** a field's configuration is changed after an entry editor was opened

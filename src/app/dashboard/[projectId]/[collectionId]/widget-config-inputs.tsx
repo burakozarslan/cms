@@ -158,6 +158,14 @@ export function WidgetConfigInputs({
         </p>
       );
 
+    case "richtext":
+      return (
+        <p className="text-base-content/60 text-sm">
+          Formatting is fixed — bold, italic, underline, headings, lists, and
+          links. Nothing to configure.
+        </p>
+      );
+
     case "datetime":
       return (
         <>
