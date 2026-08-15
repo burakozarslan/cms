@@ -21,6 +21,19 @@ export function isEmptyValue(value: unknown): boolean {
 }
 
 /**
+ * Whether a field holds "no value", for the widget in play. Most widgets'
+ * emptiness is exactly `isEmptyValue`; a widget whose empty state isn't a
+ * nullish/blank-string/empty-array (richtext's untouched document is a
+ * non-empty object) overrides it via `WidgetDefinition.isEmpty`.
+ */
+function fieldIsEmpty(field: ParsedField, value: unknown): boolean {
+  const widget = widgetDefinition(field.widget);
+  return widget.isEmpty
+    ? widget.isEmpty(value, field.config)
+    : isEmptyValue(value);
+}
+
+/**
  * A validator for one collection's entry values, keyed by field id.
  *
  * Keyed by id rather than by `key` because values are stored against `field_id`
@@ -64,7 +77,7 @@ export function buildEntrySchema(
           continue;
         }
 
-        if (isEmptyValue(raw)) {
+        if (fieldIsEmpty(field, raw)) {
           if (field.required) {
             ctx.addIssue({
               code: "custom",
@@ -126,8 +139,9 @@ export function validateEntryValues(
 
   const values: Record<string, unknown> = {};
   for (const field of fields) {
+    if (!field.ok) continue;
     const raw = submitted[field.id];
-    if (!isEmptyValue(raw)) values[field.id] = raw;
+    if (!fieldIsEmpty(field, raw)) values[field.id] = raw;
   }
 
   return { ok: true, values };

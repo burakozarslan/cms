@@ -16,8 +16,8 @@ import { WidgetConfigInputs } from "./widget-config-inputs";
  * The widget type picker.
  *
  * Radio inputs rather than a listbox, so the whole thing is keyboard-operable
- * with arrow keys and needs no JavaScript to submit. `richtext` is absent
- * because it is absent from `widgetTypes` — the picker has no list of its own.
+ * with arrow keys and needs no JavaScript to submit. Reads directly from
+ * `widgetTypes` — the picker has no list of its own.
  */
 function WidgetPicker({
   selected,
