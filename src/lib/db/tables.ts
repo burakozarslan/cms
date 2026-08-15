@@ -13,7 +13,13 @@
  * used before a tenant context exists (registration, login), not tenant-owned
  * content.
  */
-export const TENANT_SCOPED_TABLES = ["projects"] as const;
+export const TENANT_SCOPED_TABLES = [
+  "projects",
+  "collections",
+  "fields",
+  "entries",
+  "entry_values",
+] as const;
 
 export type TenantScopedTable = (typeof TENANT_SCOPED_TABLES)[number];
 
