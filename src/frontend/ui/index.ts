@@ -16,3 +16,21 @@ export type { CardProps } from "./card";
 
 export { Alert } from "./alert";
 export type { AlertProps } from "./alert";
+
+export { Select } from "./select";
+export type { SelectProps } from "./select";
+
+export { Textarea } from "./textarea";
+export type { TextareaProps } from "./textarea";
+
+export { Switch } from "./switch";
+export type { SwitchProps } from "./switch";
+
+export { Badge } from "./badge";
+export type { BadgeProps } from "./badge";
+
+export { Icon } from "./icon";
+export type { IconProps } from "./icon";
+
+export { ConfirmDialog } from "./confirm-dialog";
+export type { ConfirmDialogProps } from "./confirm-dialog";
