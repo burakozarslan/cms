@@ -1,0 +1,69 @@
+schema: spec-driven
+
+context: |
+  Tech Stack:
+    - Framework: Next.js (App Router, Server Actions, Route Handlers)
+    - Database: SQLite (via better-sqlite3 or libSQL / Turso for edge/serverless)
+    - Query Layer: Kysely (Dynamic Query Builder, zero-codegen at runtime)
+    - Authentication: Auth.js / NextAuth (Session-based, multi-tenant aware with tenantId isolation)
+    - Media & Asset Storage: Cloudinary (Server-side signed uploads, automatic optimization & transformations)
+    - Custom Field Strategy: Dynamic JSON columns (json_extract) + custom_field_definitions metadata table (No dynamic ALTER TABLE DDL)
+    - Schema Validation: Zod (Dynamic schema generators against runtime field definitions)
+
+  Media Configuration (Cloudinary):
+    - cloud_name: Account unique identifier
+    - api_key: Public identifier for the application
+    - api_secret: Server-side secret key used to sign requests (MUST remain confidential and never be exposed to the client)
+
+  API Style: RESTful / JSON Route Handlers, documented in docs/api.md
+  Testing: Jest + React Testing Library (Unit/Component), Playwright/Supertest (API & Tenant Isolation)
+
+  Key Architectural Invariants:
+    - Multi-tenant data isolation MUST be enforced automatically on all Kysely queries via a Tenant-Aware Query Builder wrapper or plugin (direct unscoped Kysely instance usage in route handlers is forbidden).
+    - Any third-party credentials provided by tenants (e.g., Cloudinary API secrets) MUST be encrypted at rest in SQLite using AEAD (e.g., AES-256-GCM) with a central application master key.
+    - Custom fields must NEVER trigger dynamic SQL DDL; all dynamic data lives in validated JSON columns.
+    - Custom JSON fields intended for heavy searching/filtering should leverage SQLite FTS5, as dynamic functional indexes on varying tenant keys are not scalable.
+    - All custom field reads/writes must pass through Zod validators derived from tenant field definitions.
+    - Cloudinary upload signatures and operations using `api_secret` MUST only run in secure server-side environments (Server Actions / Route Handlers).
+    - Public APIs must maintain backward compatibility.
+
+rules:
+  proposal:
+    - Include rollback plan and data migration considerations (JSON payload migrations)
+    - Identify multi-tenant performance and indexing impact (SQLite functional indexes, json_extract, and FTS5 for text search)
+    - Detail tenant isolation boundaries and permission checks
+    - Detail secure handling and encryption-at-rest for per-tenant/system storage of Cloudinary credentials
+    - Specify the caching strategy (in-memory or KV/Redis) for runtime Zod schema definitions to prevent database N+1 round-trips
+  specs:
+    - Use Given/When/Then format for acceptance criteria
+    - Reference existing Kysely dynamic query and JSON column patterns before inventing new ones
+    - Define tenant isolation edge cases (e.g., cross-tenant key collisions, unauthorized reads)
+    - Validate media upload and URL generation flows using signed Cloudinary parameters
+
+operations:
+  proposal:
+    after:
+      - git checkout development
+      - git pull origin development
+      - git checkout -b feature/$SPEC_NAME
+  apply:
+    guidance:
+      - Implement code changes according to the task list
+      - Ensure all dynamic Kysely queries explicitly parameterize JSON keys and values
+      - Ensure Cloudinary `api_secret` is never exposed in client bundles or public endpoints
+      - Add Jest and React Testing Library tests covering all Given/When/Then scenarios
+      - Include test cases verifying that tenant A cannot access or query tenant B's JSON custom fields or media assets
+      - Run focused tests before the full suite to verify passing status
+  archive:
+    guidance:
+      - Keep the completion summary concise
+      - Note any new custom field types, JSON index definitions, or media handling hooks added
+    after:
+      - git checkout development
+      - git pull origin development
+      - git merge --no-ff feature/$SPEC_NAME -m "Merge feature/$SPEC_NAME into development (spec archived)"
+      - git branch -d feature/$SPEC_NAME
+      - git push origin development
+
+githubCopilot:
+  cloudAgent: false
