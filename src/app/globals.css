@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+@plugin "flyonui";
+
+@source "../../node_modules/flyonui/flyonui.js";
