@@ -2,11 +2,15 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 
-import { Card, CardBody, CardTitle } from "@frontend/ui";
+import { Button, Card, CardBody, CardTitle, ConfirmDialog } from "@frontend/ui";
 import { requireSession } from "@/lib/auth";
-import { listCollections } from "@/lib/collections/service";
+import {
+  countEntriesByCollection,
+  listCollections,
+} from "@/lib/collections/service";
 import { findProject } from "@/lib/projects/service";
 
+import { deleteCollectionAction } from "./actions";
 import { CreateCollectionForm } from "./create-collection-form";
 
 type Params = { params: Promise<{ projectId: string }> };
@@ -35,6 +39,11 @@ export default async function ProjectPage({ params }: Params) {
   if (!project) notFound();
 
   const collections = await listCollections(session.user.tenantId, projectId);
+  const entryCounts = await Promise.all(
+    collections.map((collection) =>
+      countEntriesByCollection(session.user.tenantId, collection.id),
+    ),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -64,23 +73,54 @@ export default async function ProjectPage({ params }: Params) {
           <h2 className="text-base font-semibold">Collections</h2>
 
           <ul className="grid gap-4 sm:grid-cols-2">
-            {collections.map((collection) => (
+            {collections.map((collection, index) => (
               <li key={collection.id}>
-                <Link
-                  href={`/dashboard/${projectId}/${collection.id}`}
-                  className="block no-underline"
-                >
-                  <Card className="bg-base-100 hover:border-primary border-base-content/10 border shadow-sm transition-colors">
-                    <CardBody>
-                      <CardTitle className="text-base">
-                        {collection.name}
-                      </CardTitle>
-                      <p className="text-base-content/60 font-mono text-xs">
-                        {collection.slug}
-                      </p>
-                    </CardBody>
-                  </Card>
-                </Link>
+                <Card className="bg-base-100 hover:border-primary border-base-content/10 border shadow-sm transition-colors">
+                  <CardBody>
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={`/dashboard/${projectId}/${collection.id}`}
+                        className="block flex-1 no-underline"
+                      >
+                        <CardTitle className="text-base">
+                          {collection.name}
+                        </CardTitle>
+                        <p className="text-base-content/60 font-mono text-xs">
+                          {collection.slug}
+                        </p>
+                      </Link>
+
+                      <ConfirmDialog
+                        trigger={
+                          <Button type="button" variant="ghost" size="xs">
+                            Delete
+                          </Button>
+                        }
+                        title={`Delete "${collection.name}"?`}
+                        confirmLabel="Delete collection"
+                        destructive
+                        action={deleteCollectionAction}
+                        hidden={{ projectId, collectionId: collection.id }}
+                      >
+                        {entryCounts[index] > 0 ? (
+                          <>
+                            This will permanently delete{" "}
+                            <strong>
+                              {entryCounts[index]}{" "}
+                              {entryCounts[index] === 1 ? "entry" : "entries"}
+                            </strong>
+                            . This cannot be undone.
+                          </>
+                        ) : (
+                          <>
+                            No entries exist in this collection yet, so nothing
+                            else is affected.
+                          </>
+                        )}
+                      </ConfirmDialog>
+                    </div>
+                  </CardBody>
+                </Card>
               </li>
             ))}
           </ul>

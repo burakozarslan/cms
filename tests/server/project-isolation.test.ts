@@ -10,6 +10,9 @@ import {
 const { cleanup } = setupTempDatabase();
 
 let service: typeof import("@/lib/projects/service");
+let collections: typeof import("@/lib/collections/service");
+let entries: typeof import("@/lib/entries/service");
+let fixtures: typeof import("../helpers/content-fixtures");
 let tenantA: string;
 let tenantB: string;
 let projectB: string;
@@ -19,6 +22,9 @@ beforeAll(async () => {
 
   const { registerTenant } = await import("@/lib/tenants/register");
   service = await import("@/lib/projects/service");
+  collections = await import("@/lib/collections/service");
+  entries = await import("@/lib/entries/service");
+  fixtures = await import("../helpers/content-fixtures");
 
   const a = await registerTenant({ email: "a@example.com", password: "password one" });
   const b = await registerTenant({ email: "b@example.com", password: "password two" });
@@ -130,5 +136,72 @@ describe("project creation", () => {
     if (!result.ok) return;
     // Slugs are unique per tenant, not globally.
     expect(result.project.slug).toBe("repeat");
+  });
+});
+
+describe("deleting a project", () => {
+  it("counts collections and entries for the confirmation", async () => {
+    const created = await service.createProject(tenantA, {
+      name: "Counted Project",
+    });
+    if (!created.ok) throw new Error("fixture project failed");
+    const projectId = created.project.id;
+
+    const collectionA = await fixtures.makeCollection(tenantA, projectId, "A");
+    const fieldA = await fixtures.makeField(tenantA, collectionA, {
+      key: "title",
+      widget: "string",
+    });
+    await fixtures.makeEntry(tenantA, collectionA, { [fieldA]: "One" });
+    await fixtures.makeEntry(tenantA, collectionA, { [fieldA]: "Two" });
+
+    await fixtures.makeCollection(tenantA, projectId, "B");
+
+    await expect(
+      service.countCollectionsAndEntriesByProject(tenantA, projectId),
+    ).resolves.toEqual({ collections: 2, entries: 2 });
+  });
+
+  it("cascades to collections, fields, entries, and entry values", async () => {
+    const created = await service.createProject(tenantA, {
+      name: "Cascading Project",
+    });
+    if (!created.ok) throw new Error("fixture project failed");
+    const projectId = created.project.id;
+
+    const collectionId = await fixtures.makeCollection(
+      tenantA,
+      projectId,
+      "Doomed",
+    );
+    const fieldId = await fixtures.makeField(tenantA, collectionId, {
+      key: "title",
+      widget: "string",
+    });
+    const entryId = await fixtures.makeEntry(tenantA, collectionId, {
+      [fieldId]: "Gone",
+    });
+
+    const result = await service.deleteProject(tenantA, projectId);
+    expect(result.ok).toBe(true);
+
+    await expect(service.findProject(tenantA, projectId)).resolves.toBeUndefined();
+    await expect(
+      collections.findCollectionById(tenantA, collectionId),
+    ).resolves.toBeUndefined();
+    await expect(
+      collections.findField(tenantA, collectionId, fieldId),
+    ).resolves.toBeUndefined();
+    await expect(
+      entries.findEntry(tenantA, collectionId, entryId),
+    ).resolves.toBeUndefined();
+  });
+
+  it("refuses to delete another tenant's project", async () => {
+    await expect(
+      service.deleteProject(tenantA, projectB),
+    ).resolves.toEqual({ ok: false, error: "NOT_FOUND" });
+
+    await expect(service.findProject(tenantB, projectB)).resolves.toBeDefined();
   });
 });

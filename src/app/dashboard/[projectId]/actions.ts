@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { createCollection } from "@/lib/collections/service";
+import { createCollection, deleteCollection } from "@/lib/collections/service";
 
 export type CreateCollectionState = {
   error?: string;
@@ -34,4 +34,18 @@ export async function createCollectionAction(
 
   revalidatePath(`/dashboard/${projectId}`);
   redirect(`/dashboard/${projectId}/${result.collection.id}/fields`);
+}
+
+export async function deleteCollectionAction(
+  formData: FormData,
+): Promise<void> {
+  const session = await requireSession();
+  if (!session) redirect("/login");
+
+  const projectId = String(formData.get("projectId") ?? "");
+  const collectionId = String(formData.get("collectionId") ?? "");
+
+  await deleteCollection(session.user.tenantId, projectId, collectionId);
+
+  revalidatePath(`/dashboard/${projectId}`);
 }

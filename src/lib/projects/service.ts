@@ -25,6 +25,10 @@ export type CreateProjectResult =
   | { ok: true; project: Project }
   | { ok: false; error: "INVALID"; fieldErrors: Record<string, string[]> };
 
+export type MutationResult = { ok: true } | { ok: false; error: "NOT_FOUND" };
+
+const NOT_FOUND: MutationResult = { ok: false, error: "NOT_FOUND" };
+
 /** All projects owned by the acting tenant. Scoping is automatic. */
 export function listProjects(tenantId: string): Promise<Project[]> {
   return getTenantDb(tenantId)
@@ -86,4 +90,53 @@ export async function createProject(
   if (!project) throw new Error("Project vanished immediately after insert.");
 
   return { ok: true, project };
+}
+
+/** Drives the delete confirmation: "N collections and M entries will be deleted". */
+export async function countCollectionsAndEntriesByProject(
+  tenantId: string,
+  projectId: string,
+): Promise<{ collections: number; entries: number }> {
+  const db = getTenantDb(tenantId);
+
+  const [collectionsRow, entriesRow] = await Promise.all([
+    db
+      .selectFrom("collections")
+      .select((eb) => eb.fn.countAll().as("count"))
+      .where("project_id", "=", projectId)
+      .executeTakeFirst(),
+    db
+      .selectFrom("entries")
+      .innerJoin("collections", "collections.id", "entries.collection_id")
+      .select((eb) => eb.fn.countAll().as("count"))
+      .where("collections.project_id", "=", projectId)
+      .executeTakeFirst(),
+  ]);
+
+  return {
+    collections: Number(collectionsRow?.count ?? 0),
+    entries: Number(entriesRow?.count ?? 0),
+  };
+}
+
+/**
+ * Hard-delete a project.
+ *
+ * `collections.project_id` cascades, which in turn cascades `fields` and
+ * `entries`, which cascade `entry_values` — so the project's entire content
+ * model goes with it, no orphan can survive.
+ */
+export async function deleteProject(
+  tenantId: string,
+  projectId: string,
+): Promise<MutationResult> {
+  const project = await findProject(tenantId, projectId);
+  if (!project) return NOT_FOUND;
+
+  await getTenantDb(tenantId)
+    .deleteFrom("projects")
+    .where("id", "=", projectId)
+    .execute();
+
+  return { ok: true };
 }
