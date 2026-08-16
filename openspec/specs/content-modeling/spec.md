@@ -141,7 +141,7 @@ The system SHALL allow a collection to designate one of its fields as the field 
 - **THEN** the collection has no designated title field and its entry list falls back rather than erroring
 
 ### Requirement: Deleting a field permanently deletes its content values
-The system SHALL hard-delete a field together with every value stored against it, and SHALL warn the tenant with the number of affected entries before doing so.
+The system SHALL hard-delete a field together with every value stored against it, and SHALL warn the tenant with the number of affected entries before doing so. The confirmation SHALL NOT be presented except in direct response to the tenant explicitly initiating deletion of that field, and canceling the confirmation SHALL dismiss it without deleting the field or any of its values.
 
 #### Scenario: Warned before destructive delete
 - **GIVEN** a field with values in 47 entries
@@ -157,6 +157,16 @@ The system SHALL hard-delete a field together with every value stored against it
 - **GIVEN** an entry with values for fields A, B, and C
 - **WHEN** field B is deleted
 - **THEN** the entry retains its values for A and C
+
+#### Scenario: Confirmation does not appear unprompted
+- **GIVEN** a tenant adds a new field to a collection
+- **WHEN** the field is created and its row renders in the field list
+- **THEN** no delete confirmation is shown for that field, or any other field, until the tenant explicitly clicks its delete control
+
+#### Scenario: Canceling a delete confirmation leaves the field intact
+- **GIVEN** a tenant has opened the delete confirmation for a field
+- **WHEN** the tenant clicks Cancel
+- **THEN** the confirmation is dismissed, the field and its values remain unchanged, and no further action is required to continue using the field builder
 
 ### Requirement: Content model access is confined to the owning tenant
 The system SHALL resolve collections and fields only through tenant-scoped access, and SHALL verify that each addressed resource belongs to its addressed parent.
