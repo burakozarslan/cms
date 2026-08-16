@@ -47,6 +47,7 @@ operations:
       - "Before starting implementation, ensure you are on the feature branch: git checkout -b feature/$SPEC_NAME (from an up-to-date development branch)"
       - Implement code changes according to the task list
       - Use FlyonUI components instead of raw Tailwind CSS (No Shadcn UI or other UI library). Keep consistency with other parts of the system.
+      - Always check Flyon mcp and use it when needed. It is very powerful and can save you a lot of time.
       - Create components if needed and import them from the '@frontend/ui' package.
       - Don't import FlyonUI components directly in Next.js pages or components. Create a wrapper component in the '@frontend/ui' folder that imports FlyonUI components and exports them if needed. This is to keep the changes isolated in the @frontend/ui package.
       - Ensure all dynamic Kysely queries explicitly parameterize JSON keys and values
