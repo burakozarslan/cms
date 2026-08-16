@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 
-import { Button, Card, CardBody, CardTitle, ConfirmDialog } from "@frontend/ui";
+import { Card, CardBody, CardTitle } from "@frontend/ui";
 import { requireSession } from "@/lib/auth";
 import {
   countEntriesByCollection,
@@ -11,7 +11,7 @@ import {
 } from "@/lib/collections/service";
 import { findProject } from "@/lib/projects/service";
 
-import { deleteCollectionAction } from "./actions";
+import { CollectionCard } from "./collection-card";
 import { CreateCollectionForm } from "./create-collection-form";
 
 type Params = { params: Promise<{ projectId: string }> };
@@ -81,65 +81,12 @@ export default async function ProjectPage({ params }: Params) {
           <ul className="grid gap-4 sm:grid-cols-2">
             {collections.map((collection, index) => (
               <li key={collection.id}>
-                <Card className="bg-base-100 hover:border-primary border-base-content/10 border shadow-sm transition-colors">
-                  <CardBody>
-                    <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={`/dashboard/${projectId}/${collection.id}`}
-                        className="block flex-1 no-underline"
-                      >
-                        <CardTitle className="text-base">
-                          {collection.name}
-                        </CardTitle>
-                        <p className="text-base-content/60 font-mono text-xs">
-                          {collection.slug}
-                        </p>
-                      </Link>
-
-                      <ConfirmDialog
-                        trigger={
-                          <Button type="button" variant="ghost" size="xs">
-                            Delete
-                          </Button>
-                        }
-                        title={`Delete "${collection.name}"?`}
-                        confirmLabel="Delete collection"
-                        destructive
-                        action={deleteCollectionAction}
-                        hidden={{ projectId, collectionId: collection.id }}
-                      >
-                        {entryCounts[index] > 0 ? (
-                          <>
-                            This will permanently delete{" "}
-                            <strong>
-                              {entryCounts[index]}{" "}
-                              {entryCounts[index] === 1 ? "entry" : "entries"}
-                            </strong>
-                            . This cannot be undone.
-                          </>
-                        ) : (
-                          <>
-                            No entries exist in this collection yet, so nothing
-                            else is affected.
-                          </>
-                        )}
-                        {relationshipFieldCounts[index] > 0 ? (
-                          <>
-                            {" "}
-                            <strong>
-                              {relationshipFieldCounts[index]}{" "}
-                              {relationshipFieldCounts[index] === 1
-                                ? "relationship field"
-                                : "relationship fields"}
-                            </strong>{" "}
-                            in other collections target this collection and
-                            will stop working.
-                          </>
-                        ) : null}
-                      </ConfirmDialog>
-                    </div>
-                  </CardBody>
-                </Card>
+                <CollectionCard
+                  projectId={projectId}
+                  collection={collection}
+                  entryCount={entryCounts[index]}
+                  relationshipFieldCount={relationshipFieldCounts[index]}
+                />
               </li>
             ))}
           </ul>

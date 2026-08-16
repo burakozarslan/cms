@@ -1,16 +1,15 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
-import { Button, Card, CardBody, CardTitle, ConfirmDialog } from "@frontend/ui";
+import { Card, CardBody, CardTitle } from "@frontend/ui";
 import { requireSession } from "@/lib/auth";
 import {
   countCollectionsAndEntriesByProject,
   listProjects,
 } from "@/lib/projects/service";
 
-import { deleteProjectAction } from "./actions";
 import { CreateProjectForm } from "./create-project-form";
+import { ProjectCard } from "./project-card";
 
 export const metadata: Metadata = { title: "Projects" };
 
@@ -52,59 +51,7 @@ export default async function DashboardPage() {
 
           return (
             <li key={project.id}>
-              <Card className="bg-base-100 hover:border-primary border-base-content/10 border shadow-sm transition-colors">
-                <CardBody>
-                  <div className="flex items-start justify-between gap-2">
-                    <Link
-                      href={`/dashboard/${project.id}`}
-                      className="block flex-1 no-underline"
-                    >
-                      <CardTitle className="text-base">
-                        {project.name}
-                      </CardTitle>
-                      <p className="text-base-content/60 font-mono text-xs">
-                        {project.slug}
-                      </p>
-                    </Link>
-
-                    <ConfirmDialog
-                      trigger={
-                        <Button type="button" variant="ghost" size="xs">
-                          Delete
-                        </Button>
-                      }
-                      title={`Delete "${project.name}"?`}
-                      confirmLabel="Delete project"
-                      destructive
-                      action={deleteProjectAction}
-                      hidden={{ projectId: project.id }}
-                    >
-                      {counts.collections > 0 || counts.entries > 0 ? (
-                        <>
-                          This will permanently delete{" "}
-                          <strong>
-                            {counts.collections}{" "}
-                            {counts.collections === 1
-                              ? "collection"
-                              : "collections"}
-                          </strong>{" "}
-                          and{" "}
-                          <strong>
-                            {counts.entries}{" "}
-                            {counts.entries === 1 ? "entry" : "entries"}
-                          </strong>
-                          . This cannot be undone.
-                        </>
-                      ) : (
-                        <>
-                          This project has no collections yet, so nothing else
-                          is affected.
-                        </>
-                      )}
-                    </ConfirmDialog>
-                  </div>
-                </CardBody>
-              </Card>
+              <ProjectCard project={project} counts={counts} />
             </li>
           );
         })}

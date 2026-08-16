@@ -4,9 +4,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { createCollection, deleteCollection } from "@/lib/collections/service";
+import {
+  createCollection,
+  deleteCollection,
+  updateCollection,
+} from "@/lib/collections/service";
 
 export type CreateCollectionState = {
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+};
+
+export type UpdateCollectionState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
 };
@@ -34,6 +43,33 @@ export async function createCollectionAction(
 
   revalidatePath(`/dashboard/${projectId}`);
   redirect(`/dashboard/${projectId}/${result.collection.id}/fields`);
+}
+
+export async function updateCollectionAction(
+  _prev: UpdateCollectionState,
+  formData: FormData,
+): Promise<UpdateCollectionState> {
+  const session = await requireSession();
+  if (!session) redirect("/login");
+
+  const projectId = String(formData.get("projectId") ?? "");
+  const collectionId = String(formData.get("collectionId") ?? "");
+
+  const result = await updateCollection(
+    session.user.tenantId,
+    projectId,
+    collectionId,
+    { name: formData.get("name") },
+  );
+
+  if (!result.ok) {
+    return result.error === "NOT_FOUND"
+      ? { error: "That collection could not be found." }
+      : { fieldErrors: result.fieldErrors };
+  }
+
+  revalidatePath(`/dashboard/${projectId}`);
+  return {};
 }
 
 export async function deleteCollectionAction(

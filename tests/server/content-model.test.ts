@@ -92,6 +92,67 @@ describe("creating a collection", () => {
   });
 });
 
+describe("renaming a collection", () => {
+  it("updates the name and leaves the slug, id, and project unchanged", async () => {
+    const collectionId = await makeCollection(tenant, project, "Original");
+    const before = await collections.findCollection(
+      tenant,
+      project,
+      collectionId,
+    );
+
+    const result = await collections.updateCollection(
+      tenant,
+      project,
+      collectionId,
+      { name: "Renamed" },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.collection.id).toBe(collectionId);
+    expect(result.collection.project_id).toBe(project);
+    expect(result.collection.slug).toBe(before?.slug);
+    expect(result.collection.name).toBe("Renamed");
+  });
+
+  it("rejects an empty or whitespace-only name and leaves the collection untouched", async () => {
+    const collectionId = await makeCollection(tenant, project, "Untouched");
+
+    const result = await collections.updateCollection(
+      tenant,
+      project,
+      collectionId,
+      { name: "   " },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("INVALID");
+
+    await expect(
+      collections.findCollection(tenant, project, collectionId),
+    ).resolves.toMatchObject({ name: "Untouched" });
+  });
+
+  it("refuses a collection id that belongs to a different project", async () => {
+    const otherProject = await makeProject(tenant, "Other Project");
+    const collectionId = await makeCollection(tenant, project, "Belongs Here");
+
+    const result = await collections.updateCollection(
+      tenant,
+      otherProject,
+      collectionId,
+      { name: "Hijacked" },
+    );
+
+    expect(result).toEqual({ ok: false, error: "NOT_FOUND" });
+    await expect(
+      collections.findCollection(tenant, project, collectionId),
+    ).resolves.toMatchObject({ name: "Belongs Here" });
+  });
+});
+
 describe("field keys", () => {
   it("accepts a well-formed key and appends the field last", async () => {
     const collection = await makeCollection(tenant, project, "Ordered");

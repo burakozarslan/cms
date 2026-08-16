@@ -92,6 +92,44 @@ export async function createProject(
   return { ok: true, project };
 }
 
+export type UpdateProjectResult =
+  | { ok: true; project: Project }
+  | { ok: false; error: "INVALID"; fieldErrors: Record<string, string[]> }
+  | { ok: false; error: "NOT_FOUND" };
+
+/** Renames a project. The slug, assigned once at creation, is left untouched. */
+export async function updateProject(
+  tenantId: string,
+  projectId: string,
+  input: unknown,
+): Promise<UpdateProjectResult> {
+  const parsed = projectNameSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "INVALID",
+      fieldErrors: z.flattenError(parsed.error).fieldErrors as Record<
+        string,
+        string[]
+      >,
+    };
+  }
+
+  const existing = await findProject(tenantId, projectId);
+  if (!existing) return { ok: false, error: "NOT_FOUND" };
+
+  await getTenantDb(tenantId)
+    .updateTable("projects")
+    .set({ name: parsed.data.name })
+    .where("id", "=", projectId)
+    .execute();
+
+  const project = await findProject(tenantId, projectId);
+  if (!project) throw new Error("Project vanished immediately after update.");
+
+  return { ok: true, project };
+}
+
 /** Drives the delete confirmation: "N collections and M entries will be deleted". */
 export async function countCollectionsAndEntriesByProject(
   tenantId: string,

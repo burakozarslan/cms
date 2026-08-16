@@ -92,6 +92,10 @@ export type CreateCollectionResult =
   | { ok: true; collection: Collection }
   | Failure;
 
+export type UpdateCollectionResult =
+  | { ok: true; collection: Collection }
+  | Failure;
+
 export type FieldResult = { ok: true; field: FieldParseResult } | Failure;
 
 export type MutationResult = { ok: true } | Failure;
@@ -207,6 +211,34 @@ export async function createCollection(
   const collection = await findCollection(tenantId, projectId, id);
   if (!collection) {
     throw new Error("Collection vanished immediately after insert.");
+  }
+
+  return { ok: true, collection };
+}
+
+/** Renames a collection. The slug, assigned once at creation, is left untouched. */
+export async function updateCollection(
+  tenantId: string,
+  projectId: string,
+  collectionId: string,
+  input: unknown,
+): Promise<UpdateCollectionResult> {
+  const parsed = collectionNameSchema.safeParse(input);
+  if (!parsed.success) return invalid(flatten(parsed.error));
+
+  const existing = await findCollection(tenantId, projectId, collectionId);
+  if (!existing) return NOT_FOUND;
+
+  await getTenantDb(tenantId)
+    .updateTable("collections")
+    .set({ name: parsed.data.name })
+    .where("id", "=", collectionId)
+    .where("project_id", "=", projectId)
+    .execute();
+
+  const collection = await findCollection(tenantId, projectId, collectionId);
+  if (!collection) {
+    throw new Error("Collection vanished immediately after update.");
   }
 
   return { ok: true, collection };

@@ -205,3 +205,58 @@ describe("deleting a project", () => {
     await expect(service.findProject(tenantB, projectB)).resolves.toBeDefined();
   });
 });
+
+describe("renaming a project", () => {
+  it("updates the name and leaves the slug and id unchanged", async () => {
+    const created = await service.createProject(tenantA, {
+      name: "Original Name",
+    });
+    if (!created.ok) throw new Error("fixture project failed");
+    const { id: projectId, slug } = created.project;
+
+    const result = await service.updateProject(tenantA, projectId, {
+      name: "Renamed Project",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.project.id).toBe(projectId);
+    expect(result.project.slug).toBe(slug);
+    expect(result.project.name).toBe("Renamed Project");
+
+    await expect(service.findProject(tenantA, projectId)).resolves.toMatchObject({
+      name: "Renamed Project",
+      slug,
+    });
+  });
+
+  it("rejects an empty or whitespace-only name and leaves the project untouched", async () => {
+    const created = await service.createProject(tenantA, {
+      name: "Untouched",
+    });
+    if (!created.ok) throw new Error("fixture project failed");
+
+    const result = await service.updateProject(tenantA, created.project.id, {
+      name: "   ",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("INVALID");
+
+    await expect(
+      service.findProject(tenantA, created.project.id),
+    ).resolves.toMatchObject({ name: "Untouched" });
+  });
+
+  it("refuses to rename another tenant's project", async () => {
+    const result = await service.updateProject(tenantA, projectB, {
+      name: "Hijacked",
+    });
+
+    expect(result).toEqual({ ok: false, error: "NOT_FOUND" });
+    await expect(service.findProject(tenantB, projectB)).resolves.toMatchObject({
+      name: "B Private",
+    });
+  });
+});
