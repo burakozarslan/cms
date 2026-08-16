@@ -34,3 +34,6 @@ export type { IconProps } from "./icon";
 
 export { ConfirmDialog } from "./confirm-dialog";
 export type { ConfirmDialogProps } from "./confirm-dialog";
+
+export { Dropdown, DropdownItem } from "./dropdown";
+export type { DropdownProps } from "./dropdown";
