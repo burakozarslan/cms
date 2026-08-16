@@ -5,7 +5,10 @@ import { requireSession } from "@/lib/auth";
 
 // A flat list today — the shell is structured to grow more tabs (profile,
 // preferences, ...) without a route/layout rewrite.
-const TABS = [{ href: "/dashboard/settings/password", label: "Password" }];
+const TABS = [
+  { href: "/dashboard/settings/password", label: "Password" },
+  { href: "/dashboard/settings/cloudinary", label: "Media" },
+];
 
 export default async function SettingsLayout({
   children,
