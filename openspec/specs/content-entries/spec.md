@@ -33,7 +33,7 @@ The system SHALL render each field of a collection using the input appropriate t
 #### Scenario: Widget inputs
 - **GIVEN** a collection containing one field of each supported widget type
 - **WHEN** the entry editor renders
-- **THEN** `string` renders a single-line text input, `text` a multi-line textarea, `select` a dropdown of its configured options, `number` a numeric input honouring its configured bounds and step, `boolean` a toggle, `datetime` a date-and-time picker, and `richtext` a formatting-capable rich text editor
+- **THEN** `string` renders a single-line text input, `text` a multi-line textarea, `select` a dropdown of its configured options, `number` a numeric input honouring its configured bounds and step, `boolean` a toggle, `datetime` a date-and-time picker, `richtext` a formatting-capable rich text editor, and `relationship` a searchable picker of the target collection's entries
 
 #### Scenario: Fields render in their defined order
 - **GIVEN** a collection whose fields are ordered A, B, C
@@ -81,6 +81,11 @@ The system SHALL validate every submitted value on the server against a schema d
 #### Scenario: Richtext document must be structurally valid
 - **GIVEN** a `richtext` field
 - **WHEN** a save is submitted with a value that is not a well-formed document
+- **THEN** the system rejects the save with a validation error
+
+#### Scenario: Relationship value must reference an existing entry in the target collection
+- **GIVEN** a `relationship` field targeting collection "Author"
+- **WHEN** an entry is saved referencing an entry id that is not a current member of "Author"
 - **THEN** the system rejects the save with a validation error
 
 #### Scenario: Validation reflects the current field definitions
@@ -161,7 +166,7 @@ The system SHALL list a collection's entries labelled by their display title, an
 - **THEN** the system shows a create-first-entry prompt instead of an empty list
 
 ### Requirement: Deleting an entry deletes its values
-The system SHALL hard-delete an entry together with all values stored against it, after confirmation.
+The system SHALL hard-delete an entry together with all values stored against it, after confirmation. If any other entry references the entry being deleted through a `relationship` field, the confirmation SHALL additionally state how many such referencing entries exist; deletion proceeds regardless once confirmed, and those references are left pointing at an entry that no longer exists.
 
 #### Scenario: Entry and values removed
 - **GIVEN** an entry with values across several fields
@@ -172,6 +177,21 @@ The system SHALL hard-delete an entry together with all values stored against it
 - **GIVEN** a collection with fields and entries
 - **WHEN** an entry is deleted
 - **THEN** the collection's field definitions are unaffected
+
+#### Scenario: Warned when other entries reference this one
+- **GIVEN** an author entry referenced by 3 blog post entries through a `relationship` field
+- **WHEN** the tenant initiates deleting that author entry
+- **THEN** the system states that 3 other entries reference this one, in addition to any other confirmation content
+
+#### Scenario: No relationship warning when nothing references the entry
+- **GIVEN** an entry that no `relationship` value anywhere references
+- **WHEN** the tenant initiates deleting it
+- **THEN** the confirmation includes no referencing-entries mention
+
+#### Scenario: Deletion proceeds despite existing references
+- **GIVEN** an entry referenced by others, and the tenant has been warned
+- **WHEN** they confirm the deletion
+- **THEN** the entry is deleted and the referencing entries' relationship values are left pointing at an entry that no longer exists, per the relationship-widget capability's handling of a deleted referenced entry
 
 ### Requirement: Entry access is confined to the owning tenant
 The system SHALL resolve entries only through tenant-scoped access, and SHALL verify that an addressed entry belongs to its addressed collection.
