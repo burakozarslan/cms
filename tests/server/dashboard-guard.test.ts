@@ -26,6 +26,7 @@ jest.mock("@/lib/auth", () => ({
 
 let DashboardPage: typeof import("@/app/dashboard/page").default;
 let ProjectPage: typeof import("@/app/dashboard/[projectId]/page").default;
+let SettingsLayout: typeof import("@/app/dashboard/settings/layout").default;
 let tenantA: string;
 let tenantB: string;
 let projectB: string;
@@ -49,6 +50,7 @@ beforeAll(async () => {
 
   DashboardPage = (await import("@/app/dashboard/page")).default;
   ProjectPage = (await import("@/app/dashboard/[projectId]/page")).default;
+  SettingsLayout = (await import("@/app/dashboard/settings/layout")).default;
 });
 
 afterEach(() => {
@@ -76,6 +78,14 @@ describe("unauthenticated access", () => {
 
     await expect(
       ProjectPage({ params: Promise.resolve({ projectId: projectB }) }),
+    ).rejects.toThrow("REDIRECT:/login");
+  });
+
+  it("redirects settings to /login", async () => {
+    requireSession.mockResolvedValue(null);
+
+    await expect(
+      SettingsLayout({ children: null }),
     ).rejects.toThrow("REDIRECT:/login");
   });
 });

@@ -106,6 +106,41 @@ describe("session callbacks", () => {
     expect(later).toMatchObject({ userId: "user-1", tenantId: "tenant-1" });
   });
 
+  it("keeps a session token valid across a password change", async () => {
+    const { registerTenant } = await import("@/lib/tenants/register");
+    const { changePassword } = await import("@/lib/auth/change-password");
+    const { authConfig } = await import("@/lib/auth/config");
+
+    const registered = await registerTenant({
+      email: "session-continuity@example.com",
+      password: "the original password",
+    });
+    if (!registered.ok) throw new Error("fixture registration failed");
+
+    const jwt = authConfig.callbacks.jwt;
+    const signedIn = await jwt({
+      token: {},
+      user: { id: registered.userId, tenantId: registered.tenantId },
+    } as Parameters<typeof jwt>[0]);
+
+    const changeResult = await changePassword(registered.userId, {
+      currentPassword: "the original password",
+      newPassword: "the new password",
+    });
+    expect(changeResult).toEqual({ ok: true });
+
+    // The token from before the change must still authenticate afterwards —
+    // it carries no password-derived claim for a change to invalidate.
+    const afterChange = await jwt({
+      token: signedIn,
+    } as Parameters<typeof jwt>[0]);
+
+    expect(afterChange).toMatchObject({
+      userId: registered.userId,
+      tenantId: registered.tenantId,
+    });
+  });
+
   it("exposes userId and tenantId on the session", async () => {
     const { authConfig } = await import("@/lib/auth/config");
     const session = await authConfig.callbacks.session({

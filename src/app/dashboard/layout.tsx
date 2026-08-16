@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button } from "@frontend/ui";
+import { Button, Dropdown, DropdownItem } from "@frontend/ui";
 import { requireSession, signOut } from "@/lib/auth";
 
 async function signOutAction() {
@@ -26,14 +26,42 @@ export default async function DashboardLayout({
           </Link>
         </div>
         <div className="navbar-end gap-3">
-          <span className="text-base-content/70 hidden text-sm sm:inline">
-            {session.user.email}
-          </span>
-          <form action={signOutAction}>
-            <Button type="submit" variant="ghost" size="sm">
-              Sign out
-            </Button>
-          </form>
+          <Dropdown
+            trigger={
+              <div className="btn btn-ghost btn-sm font-normal text-base-content/70 hover:text-base-content flex items-center gap-1.5 px-2">
+                <span>{session.user.email}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="size-4 opacity-60"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            }
+          >
+            <DropdownItem>
+              <Link href="/dashboard/settings">Settings</Link>
+            </DropdownItem>
+            <DropdownItem>
+              <form action={signOutAction}>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                >
+                  Sign out
+                </Button>
+              </form>
+            </DropdownItem>
+          </Dropdown>
         </div>
       </nav>
 
