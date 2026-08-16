@@ -1,6 +1,7 @@
 import { Input, Select, Switch, Textarea } from "@frontend/ui";
 import { valueInputName, type ParsedField } from "@/lib/widgets";
 
+import { RelationshipPicker } from "./relationship-picker";
 import { RichTextEditor } from "./richtext-editor";
 
 /**
@@ -140,9 +141,10 @@ export function ValueInput({
       );
     }
 
-    // The only widget that mounts a client island: everything above stays a
+    // The only widgets that mount a client island: everything above stays a
     // plain server-renderable control (design decision 12 in
-    // add-project-widgets; design decision 5 in add-richtext-widget).
+    // add-project-widgets; design decision 5 in add-richtext-widget; design
+    // decision 6 in add-relationship-widget).
     case "richtext":
       return (
         <RichTextEditor
@@ -153,5 +155,22 @@ export function ValueInput({
           error={error}
         />
       );
+
+    case "relationship": {
+      const config = field.config as {
+        targetCollectionId: string;
+        multiple?: boolean;
+      };
+      return (
+        <RelationshipPicker
+          fieldId={field.id}
+          label={label}
+          targetCollectionId={config.targetCollectionId}
+          multiple={config.multiple ?? false}
+          value={value}
+          error={error}
+        />
+      );
+    }
   }
 }

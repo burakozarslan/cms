@@ -38,7 +38,7 @@ function storedRow(overrides: Partial<StoredFieldRow> = {}): StoredFieldRow {
 }
 
 describe("the widget type set", () => {
-  it("offers exactly the seven shipped types", () => {
+  it("offers exactly the eight shipped types", () => {
     expect([...widgetTypes]).toEqual([
       "string",
       "text",
@@ -47,6 +47,7 @@ describe("the widget type set", () => {
       "boolean",
       "datetime",
       "richtext",
+      "relationship",
     ]);
   });
 
@@ -344,6 +345,69 @@ describe("richtext widget", () => {
   it("does not report a malformed value as empty — it is a structural problem, not an absence", () => {
     const widget = widgetDefinition("richtext");
     expect(widget.isEmpty?.({ foo: "bar" }, {})).toBe(false);
+  });
+});
+
+describe("relationship widget", () => {
+  it("requires a target collection", () => {
+    expect(config("relationship", {}).success).toBe(false);
+    expect(config("relationship", { targetCollectionId: "" }).success).toBe(
+      false,
+    );
+  });
+
+  it("accepts a target collection id, with multiple optional", () => {
+    expect(config("relationship", { targetCollectionId: "c1" }).success).toBe(
+      true,
+    );
+    expect(
+      config("relationship", { targetCollectionId: "c1", multiple: true })
+        .success,
+    ).toBe(true);
+  });
+
+  it("takes a single non-empty id in single mode", () => {
+    expect(value("relationship", { targetCollectionId: "c1" }, "e1").success).toBe(
+      true,
+    );
+    expect(value("relationship", { targetCollectionId: "c1" }, "").success).toBe(
+      false,
+    );
+    expect(
+      value("relationship", { targetCollectionId: "c1" }, ["e1"]).success,
+    ).toBe(false);
+  });
+
+  it("takes an array of non-empty ids only when configured multiple", () => {
+    expect(
+      value(
+        "relationship",
+        { targetCollectionId: "c1", multiple: true },
+        ["e1", "e2"],
+      ).success,
+    ).toBe(true);
+    expect(
+      value(
+        "relationship",
+        { targetCollectionId: "c1", multiple: true },
+        "e1",
+      ).success,
+    ).toBe(false);
+    expect(
+      value("relationship", { targetCollectionId: "c1", multiple: true }, [
+        "e1",
+        "",
+      ]).success,
+    ).toBe(false);
+  });
+
+  it("this schema alone cannot tell a real entry id from a made-up one — that is checked separately, against the database, on save", () => {
+    // Shape validation passes for any non-empty string; existence is not this
+    // schema's job (design decision 1-2 — see tests/server/entries.test.ts).
+    expect(
+      value("relationship", { targetCollectionId: "c1" }, "not-a-real-id")
+        .success,
+    ).toBe(true);
   });
 });
 

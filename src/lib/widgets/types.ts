@@ -8,7 +8,8 @@ export type WidgetType =
   | "number"
   | "boolean"
   | "datetime"
-  | "richtext";
+  | "richtext"
+  | "relationship";
 
 /**
  * One widget type's contract.

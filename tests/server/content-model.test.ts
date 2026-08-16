@@ -448,6 +448,139 @@ describe("deleting a collection", () => {
   });
 });
 
+describe("relationship fields", () => {
+  it("accepts a target collection in the same project", async () => {
+    const blogPost = await makeCollection(tenant, project, "Blog Post RA1");
+    const author = await makeCollection(tenant, project, "Author RA1");
+
+    const result = await collections.createField(tenant, blogPost, {
+      key: "author",
+      label: "Author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects a target collection from a different project", async () => {
+    const blogPost = await makeCollection(tenant, project, "Blog Post RA2");
+    const otherProject = await makeProject(tenant, "Other Project RA2");
+    const foreignAuthor = await makeCollection(
+      tenant,
+      otherProject,
+      "Foreign Author RA2",
+    );
+
+    const result = await collections.createField(tenant, blogPost, {
+      key: "author",
+      label: "Author",
+      widget: "relationship",
+      config: { targetCollectionId: foreignAuthor },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("INVALID");
+  });
+
+  it("rejects a collection targeting itself", async () => {
+    const category = await makeCollection(tenant, project, "Category RA3");
+
+    const result = await collections.createField(tenant, category, {
+      key: "parent",
+      label: "Parent",
+      widget: "relationship",
+      config: { targetCollectionId: category },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("INVALID");
+  });
+
+  it("rejects a nonexistent target collection", async () => {
+    const blogPost = await makeCollection(tenant, project, "Blog Post RA4");
+
+    const result = await collections.createField(tenant, blogPost, {
+      key: "author",
+      label: "Author",
+      widget: "relationship",
+      config: { targetCollectionId: "does-not-exist" },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("INVALID");
+  });
+
+  it("re-validates same-project and self-reference on update too", async () => {
+    const blogPost = await makeCollection(tenant, project, "Blog Post RA5");
+    const author = await makeCollection(tenant, project, "Author RA5");
+
+    const fieldId = await makeField(tenant, blogPost, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+
+    const result = await collections.updateField(tenant, blogPost, fieldId, {
+      key: "author",
+      label: "Author",
+      widget: "relationship",
+      config: { targetCollectionId: blogPost },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("INVALID");
+  });
+
+  it("counts relationship fields elsewhere that target a collection, for the delete warning", async () => {
+    const author = await makeCollection(tenant, project, "Author RA6");
+    const blogPost = await makeCollection(tenant, project, "Blog Post RA6");
+    const recipe = await makeCollection(tenant, project, "Recipe RA6");
+
+    await expect(
+      collections.countRelationshipFieldsTargeting(tenant, author),
+    ).resolves.toBe(0);
+
+    await makeField(tenant, blogPost, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+    await makeField(tenant, recipe, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+
+    await expect(
+      collections.countRelationshipFieldsTargeting(tenant, author),
+    ).resolves.toBe(2);
+  });
+
+  it("leaves a relationship field pointing at nothing after its target collection is deleted", async () => {
+    const author = await makeCollection(tenant, project, "Author RA7");
+    const blogPost = await makeCollection(tenant, project, "Blog Post RA7");
+
+    const fieldId = await makeField(tenant, blogPost, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+
+    await collections.deleteCollection(tenant, project, author);
+
+    // The field itself survives — only its target is gone. Config still
+    // parses (it's just a string id), consistent with design decision 3:
+    // dangling references surface as unresolvable, not as a parse failure.
+    const field = await collections.findField(tenant, blogPost, fieldId);
+    expect(field?.ok).toBe(true);
+  });
+});
+
 describe("resolving the display title field", () => {
   it("prefers the designated field", async () => {
     const collection = await makeCollection(tenant, project, "Designated");

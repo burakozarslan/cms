@@ -102,6 +102,12 @@ export function configFromForm(
     case "richtext":
       return {};
 
+    case "relationship":
+      return {
+        targetCollectionId: String(form.get("config.targetCollectionId") ?? ""),
+        multiple: checkbox(form, "config.multiple"),
+      };
+
     case "datetime":
       return {
         dateOnly: checkbox(form, "config.dateOnly"),
@@ -140,7 +146,8 @@ function valueFromForm(field: ParsedField, form: FormData): unknown {
       // otherwise a required toggle could never be saved as unchecked.
       return checkbox(form, name);
 
-    case "select": {
+    case "select":
+    case "relationship": {
       const config = field.config as { multiple?: boolean };
       if (config.multiple) {
         return form.getAll(name).map((entry) => String(entry));

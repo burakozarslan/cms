@@ -34,10 +34,13 @@ export function WidgetConfigInputs({
   widget,
   config = {},
   errors,
+  relationshipTargets = [],
 }: {
   widget: WidgetType;
   config?: ConfigRecord;
   errors?: string[];
+  /** Other collections in the same project — the only valid relationship targets. */
+  relationshipTargets?: Array<{ id: string; name: string }>;
 }) {
   const error = errors?.[0];
 
@@ -182,6 +185,38 @@ export function WidgetConfigInputs({
             defaultValue={str(config, "format")}
             error={error}
           />
+        </>
+      );
+
+    case "relationship":
+      return (
+        <>
+          <Select
+            label="Target collection"
+            name="config.targetCollectionId"
+            required
+            defaultValue={str(config, "targetCollectionId")}
+            hint="The collection whose entries this field can reference."
+            error={error}
+          >
+            <option value="">Choose a collection</option>
+            {relationshipTargets.map((collection) => (
+              <option key={collection.id} value={collection.id}>
+                {collection.name}
+              </option>
+            ))}
+          </Select>
+          <Switch
+            label="Allow several references"
+            name="config.multiple"
+            defaultChecked={bool(config, "multiple")}
+          />
+          {relationshipTargets.length === 0 ? (
+            <p className="text-base-content/60 text-sm">
+              No other collections exist in this project yet. Create one first
+              to reference it here.
+            </p>
+          ) : null}
         </>
       );
   }

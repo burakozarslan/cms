@@ -3,6 +3,7 @@ import { z } from "zod";
 import { booleanWidget } from "./boolean";
 import { datetimeWidget } from "./datetime";
 import { numberWidget } from "./number";
+import { relationshipWidget } from "./relationship";
 import { richtextWidget } from "./richtext";
 import { selectWidget } from "./select";
 import { stringWidget } from "./string";
@@ -56,6 +57,7 @@ export const widgets: Record<WidgetType, ErasedWidget> = {
   boolean: erase(booleanWidget),
   datetime: erase(datetimeWidget),
   richtext: erase(richtextWidget),
+  relationship: erase(relationshipWidget),
 };
 
 /** Ordered for the type picker. */
@@ -67,6 +69,7 @@ export const widgetTypes = [
   "boolean",
   "datetime",
   "richtext",
+  "relationship",
 ] as const satisfies ReadonlyArray<WidgetType>;
 
 export const widgetTypeSchema = z.enum(widgetTypes);
@@ -99,6 +102,10 @@ export const fieldWidgetSchema = z.discriminatedUnion("widget", [
   z.object({
     widget: z.literal("richtext"),
     config: richtextWidget.configSchema,
+  }),
+  z.object({
+    widget: z.literal("relationship"),
+    config: relationshipWidget.configSchema,
   }),
 ]);
 

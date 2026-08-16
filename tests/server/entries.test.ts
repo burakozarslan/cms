@@ -260,6 +260,218 @@ describe("richtext values", () => {
   });
 });
 
+describe("relationship values", () => {
+  it("accepts a reference to an entry that exists in the target collection", async () => {
+    const author = await makeCollection(tenant, project, "Author RV1");
+    const authorName = await makeField(tenant, author, {
+      key: "name",
+      widget: "string",
+    });
+    const authorEntry = await makeEntry(tenant, author, {
+      [authorName]: "Jane Doe",
+    });
+
+    const blogPost = await makeCollection(tenant, project, "Blog Post RV1");
+    const authorField = await makeField(tenant, blogPost, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+
+    const result = await entries.createEntry(tenant, blogPost, {
+      values: { [authorField]: authorEntry },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entry.values[authorField]).toBe(authorEntry);
+  });
+
+  it("rejects a reference to an entry that belongs to a different collection", async () => {
+    const author = await makeCollection(tenant, project, "Author RV2");
+    const other = await makeCollection(tenant, project, "Other RV2");
+    const otherField = await makeField(tenant, other, {
+      key: "name",
+      widget: "string",
+    });
+    const otherEntry = await makeEntry(tenant, other, {
+      [otherField]: "Not an author",
+    });
+
+    const blogPost = await makeCollection(tenant, project, "Blog Post RV2");
+    const authorField = await makeField(tenant, blogPost, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+
+    const result = await entries.createEntry(tenant, blogPost, {
+      values: { [authorField]: otherEntry },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.error !== "INVALID") return;
+    expect(result.fieldErrors[authorField]).toBeDefined();
+  });
+
+  it("rejects a reference to an entry id that does not exist", async () => {
+    const author = await makeCollection(tenant, project, "Author RV3");
+    const blogPost = await makeCollection(tenant, project, "Blog Post RV3");
+    const authorField = await makeField(tenant, blogPost, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+
+    const result = await entries.createEntry(tenant, blogPost, {
+      values: { [authorField]: "does-not-exist" },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("INVALID");
+  });
+
+  it("in multiple mode, accepts several valid references", async () => {
+    const tag = await makeCollection(tenant, project, "Tag RV4");
+    const tagName = await makeField(tenant, tag, { key: "name", widget: "string" });
+    const tagOne = await makeEntry(tenant, tag, { [tagName]: "News" });
+    const tagTwo = await makeEntry(tenant, tag, { [tagName]: "Updates" });
+
+    const blogPost = await makeCollection(tenant, project, "Blog Post RV4");
+    const tagsField = await makeField(tenant, blogPost, {
+      key: "tags",
+      widget: "relationship",
+      config: { targetCollectionId: tag, multiple: true },
+    });
+
+    const result = await entries.createEntry(tenant, blogPost, {
+      values: { [tagsField]: [tagOne, tagTwo] },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entry.values[tagsField]).toEqual([tagOne, tagTwo]);
+  });
+
+  it("in multiple mode, reports the invalid ids in a mix of valid and invalid", async () => {
+    const tag = await makeCollection(tenant, project, "Tag RV5");
+    const tagName = await makeField(tenant, tag, { key: "name", widget: "string" });
+    const validTag = await makeEntry(tenant, tag, { [tagName]: "Valid" });
+
+    const blogPost = await makeCollection(tenant, project, "Blog Post RV5");
+    const tagsField = await makeField(tenant, blogPost, {
+      key: "tags",
+      widget: "relationship",
+      config: { targetCollectionId: tag, multiple: true },
+    });
+
+    const result = await entries.createEntry(tenant, blogPost, {
+      values: { [tagsField]: [validTag, "not-real"] },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.error !== "INVALID") return;
+    expect(result.fieldErrors[tagsField]).toBeDefined();
+  });
+
+  it("leaves a dangling value in place, unresolved, after the referenced entry is deleted", async () => {
+    const author = await makeCollection(tenant, project, "Author RV6");
+    const authorName = await makeField(tenant, author, {
+      key: "name",
+      widget: "string",
+    });
+    const authorEntry = await makeEntry(tenant, author, {
+      [authorName]: "Deleted Later",
+    });
+
+    const blogPost = await makeCollection(tenant, project, "Blog Post RV6");
+    const authorField = await makeField(tenant, blogPost, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+    const post = await makeEntry(tenant, blogPost, {
+      [authorField]: authorEntry,
+    });
+
+    await entries.deleteEntry(tenant, author, authorEntry);
+
+    // Reading the entry back does not throw or drop the field — it still
+    // holds the id, now unresolvable. The picker/render layer decides what
+    // to show for it (design decision 3).
+    const reread = await entries.findEntry(tenant, blogPost, post);
+    expect(reread?.values[authorField]).toBe(authorEntry);
+  });
+
+  it("lists an entry's own entries as options, or undefined when the collection is gone", async () => {
+    const author = await makeCollection(tenant, project, "Author RV7");
+    const authorName = await makeField(tenant, author, {
+      key: "name",
+      widget: "string",
+    });
+    const authorEntry = await makeEntry(tenant, author, {
+      [authorName]: "Listed",
+    });
+
+    await expect(entries.listEntryOptions(tenant, author)).resolves.toEqual([
+      { id: authorEntry, label: "Listed" },
+    ]);
+
+    await collections.deleteCollection(tenant, project, author);
+
+    await expect(
+      entries.listEntryOptions(tenant, author),
+    ).resolves.toBeUndefined();
+  });
+
+  it("counts other entries referencing a given entry, for the delete warning", async () => {
+    const author = await makeCollection(tenant, project, "Author RV8");
+    const authorName = await makeField(tenant, author, {
+      key: "name",
+      widget: "string",
+    });
+    const authorEntry = await makeEntry(tenant, author, {
+      [authorName]: "Referenced",
+    });
+
+    await expect(
+      entries.countEntriesReferencing(tenant, authorEntry),
+    ).resolves.toBe(0);
+
+    const blogPost = await makeCollection(tenant, project, "Blog Post RV8");
+    const authorField = await makeField(tenant, blogPost, {
+      key: "author",
+      widget: "relationship",
+      config: { targetCollectionId: author },
+    });
+    await makeEntry(tenant, blogPost, { [authorField]: authorEntry });
+    await makeEntry(tenant, blogPost, { [authorField]: authorEntry });
+
+    await expect(
+      entries.countEntriesReferencing(tenant, authorEntry),
+    ).resolves.toBe(2);
+  });
+
+  it("counts a single reference through a multiple-mode field once per referencing entry", async () => {
+    const tag = await makeCollection(tenant, project, "Tag RV9");
+    const tagName = await makeField(tenant, tag, { key: "name", widget: "string" });
+    const targetTag = await makeEntry(tenant, tag, { [tagName]: "Target" });
+
+    const blogPost = await makeCollection(tenant, project, "Blog Post RV9");
+    const tagsField = await makeField(tenant, blogPost, {
+      key: "tags",
+      widget: "relationship",
+      config: { targetCollectionId: tag, multiple: true },
+    });
+    await makeEntry(tenant, blogPost, { [tagsField]: [targetTag] });
+
+    await expect(
+      entries.countEntriesReferencing(tenant, targetTag),
+    ).resolves.toBe(1);
+  });
+});
+
 describe("server-side value validation", () => {
   it("rejects a number beyond its configured maximum", async () => {
     const collection = await makeCollection(tenant, project, "Bounds");

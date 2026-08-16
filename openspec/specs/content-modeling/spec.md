@@ -28,7 +28,7 @@ The system SHALL let an authenticated tenant create a named collection within on
 - **THEN** the system denies the request and creates no collection
 
 ### Requirement: Tenant can add fields backed by widget types
-The system SHALL let a tenant add fields to a collection, each field specifying a widget type drawn from the supported set — `string`, `text`, `select`, `number`, `boolean`, `datetime`, `richtext` — together with a machine key, a display label, a required flag, and widget-specific configuration.
+The system SHALL let a tenant add fields to a collection, each field specifying a widget type drawn from the supported set — `string`, `text`, `select`, `number`, `boolean`, `datetime`, `richtext`, `relationship` — together with a machine key, a display label, a required flag, and widget-specific configuration.
 
 #### Scenario: Field created with a supported widget type
 - **GIVEN** a tenant is editing a collection they own
@@ -44,6 +44,11 @@ The system SHALL let a tenant add fields to a collection, each field specifying 
 - **GIVEN** a tenant is choosing a widget type for a new field
 - **WHEN** the widget type list is presented
 - **THEN** `richtext` is among the selectable options, no longer excluded now that this widget type ships
+
+#### Scenario: Relationship is offered
+- **GIVEN** a tenant is choosing a widget type for a new field
+- **WHEN** the widget type list is presented
+- **THEN** `relationship` is among the selectable options
 
 ### Requirement: Widget configuration is validated against the widget type
 The system SHALL validate a field's configuration against a schema determined by its widget type, and SHALL reject configuration that does not match.
@@ -141,7 +146,7 @@ The system SHALL allow a collection to designate one of its fields as the field 
 - **THEN** the collection has no designated title field and its entry list falls back rather than erroring
 
 ### Requirement: Deleting a field permanently deletes its content values
-The system SHALL hard-delete a field together with every value stored against it, and SHALL warn the tenant with the number of affected entries before doing so.
+The system SHALL hard-delete a field together with every value stored against it, and SHALL warn the tenant with the number of affected entries before doing so. The confirmation SHALL NOT be presented except in direct response to the tenant explicitly initiating deletion of that field, and canceling the confirmation SHALL dismiss it without deleting the field or any of its values.
 
 #### Scenario: Warned before destructive delete
 - **GIVEN** a field with values in 47 entries
@@ -157,6 +162,16 @@ The system SHALL hard-delete a field together with every value stored against it
 - **GIVEN** an entry with values for fields A, B, and C
 - **WHEN** field B is deleted
 - **THEN** the entry retains its values for A and C
+
+#### Scenario: Confirmation does not appear unprompted
+- **GIVEN** a tenant adds a new field to a collection
+- **WHEN** the field is created and its row renders in the field list
+- **THEN** no delete confirmation is shown for that field, or any other field, until the tenant explicitly clicks its delete control
+
+#### Scenario: Canceling a delete confirmation leaves the field intact
+- **GIVEN** a tenant has opened the delete confirmation for a field
+- **WHEN** the tenant clicks Cancel
+- **THEN** the confirmation is dismissed, the field and its values remain unchanged, and no further action is required to continue using the field builder
 
 ### Requirement: Content model access is confined to the owning tenant
 The system SHALL resolve collections and fields only through tenant-scoped access, and SHALL verify that each addressed resource belongs to its addressed parent.
@@ -177,7 +192,7 @@ The system SHALL resolve collections and fields only through tenant-scoped acces
 - **THEN** it uses the session's tenant and ignores the client-supplied value
 
 ### Requirement: Tenant can delete a collection they own
-The system SHALL let an authenticated tenant permanently delete a collection they own, and SHALL require explicit confirmation stating what will be lost before the deletion happens. Deleting a collection SHALL remove the collection together with every field, entry, and entry value that belongs to it, leaving no orphaned data behind. The project the collection belonged to is unaffected.
+The system SHALL let an authenticated tenant permanently delete a collection they own, and SHALL require explicit confirmation stating what will be lost before the deletion happens. Deleting a collection SHALL remove the collection together with every field, entry, and entry value that belongs to it, leaving no orphaned data behind. The project the collection belonged to is unaffected. If any `relationship` field in another collection targets the collection being deleted, the confirmation SHALL additionally state how many such fields exist; deletion proceeds regardless once confirmed, and those fields are left targeting a collection that no longer exists.
 
 #### Scenario: Warned before destructive delete
 - **GIVEN** a collection with 5 fields and 20 entries
@@ -208,4 +223,19 @@ The system SHALL let an authenticated tenant permanently delete a collection the
 - **GIVEN** a tenant has just deleted one of their collections
 - **WHEN** they view that project's workspace
 - **THEN** the deleted collection no longer appears in the collection list
+
+#### Scenario: Warned when other collections' relationship fields target this one
+- **GIVEN** a collection "Author" that a `relationship` field on "Blog Post" targets
+- **WHEN** the tenant initiates deleting "Author"
+- **THEN** the system states that 1 relationship field elsewhere targets this collection, in addition to any entry count
+
+#### Scenario: No relationship warning when nothing targets the collection
+- **GIVEN** a collection that no `relationship` field anywhere targets
+- **WHEN** the tenant initiates deleting it
+- **THEN** the confirmation states only the entry count, with no relationship-field mention
+
+#### Scenario: Deletion proceeds despite existing relationship fields targeting it
+- **GIVEN** a collection targeted by a `relationship` field elsewhere, and the tenant has been warned
+- **WHEN** they confirm the deletion
+- **THEN** the collection is deleted and the relationship field elsewhere is left targeting a collection that no longer exists, per the relationship-widget capability's handling of an unresolvable target
 

@@ -49,11 +49,13 @@ export function FieldList({
   collectionId,
   fields,
   titleFieldId,
+  relationshipTargets = [],
 }: {
   projectId: string;
   collectionId: string;
   fields: FieldView[];
   titleFieldId: string | null;
+  relationshipTargets?: Array<{ id: string; name: string }>;
 }) {
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>();
@@ -230,6 +232,7 @@ export function FieldList({
                       required: field.required,
                       config: field.config,
                     }}
+                    relationshipTargets={relationshipTargets}
                     onDone={() => setEditing(undefined)}
                   />
                 </div>

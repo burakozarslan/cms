@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth";
 import {
   countValuesByField,
   findCollection,
+  listCollections,
   listFields,
 } from "@/lib/collections/service";
 import { findProject } from "@/lib/projects/service";
@@ -51,6 +52,13 @@ export default async function FieldBuilderPage({ params }: Params) {
   const fields = await listFields(tenantId, collectionId);
   const valueCounts = await countValuesByField(tenantId, collectionId);
 
+  // The only valid `relationship` targets: other collections in this project
+  // (design decision 7 — same-project, no self-reference).
+  const projectCollections = await listCollections(tenantId, projectId);
+  const relationshipTargets = projectCollections
+    .filter((candidate) => candidate.id !== collectionId)
+    .map((candidate) => ({ id: candidate.id, name: candidate.name }));
+
   const views: FieldView[] = fields.map((field) => ({
     id: field.id,
     key: field.key,
@@ -89,6 +97,7 @@ export default async function FieldBuilderPage({ params }: Params) {
             collectionId={collectionId}
             fields={views}
             titleFieldId={collection.title_field_id}
+            relationshipTargets={relationshipTargets}
           />
         </CardBody>
       </Card>
@@ -131,7 +140,11 @@ export default async function FieldBuilderPage({ params }: Params) {
       <Card className="bg-base-100 shadow-sm">
         <CardBody className="gap-4">
           <CardTitle className="text-base">Add a field</CardTitle>
-          <FieldForm projectId={projectId} collectionId={collectionId} />
+          <FieldForm
+            projectId={projectId}
+            collectionId={collectionId}
+            relationshipTargets={relationshipTargets}
+          />
         </CardBody>
       </Card>
     </div>
