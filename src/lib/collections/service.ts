@@ -10,6 +10,7 @@ import { nextAvailableSlug, slugify } from "@/lib/projects/slug";
 import {
   fieldWidgetSchema,
   parseFieldConfig,
+  relationshipConfigSchema,
   widgetTypeSchema,
   type FieldParseResult,
   type ParsedField,
@@ -261,6 +262,39 @@ function bumpSchemaVersion(trx: Transaction<DB>, collectionId: string) {
     .execute();
 }
 
+/**
+ * A `relationship` field's target must be a collection that exists, belongs to
+ * the same project as the field's own collection, and is not the collection
+ * itself. None of that is expressible in `relationshipConfigSchema` alone — it
+ * needs a database read — so it runs here, once per field create/update,
+ * rather than in the widget's own (synchronous) config schema.
+ */
+async function validateRelationshipConfig(
+  tenantId: string,
+  ownCollection: Collection,
+  config: unknown,
+): Promise<string | null> {
+  const parsed = relationshipConfigSchema.safeParse(config);
+  // Malformed shape is already caught by `fieldWidgetSchema` before this runs.
+  if (!parsed.success) return null;
+
+  const { targetCollectionId } = parsed.data;
+
+  if (targetCollectionId === ownCollection.id) {
+    return "A relationship field cannot target its own collection.";
+  }
+
+  const target = await findCollectionById(tenantId, targetCollectionId);
+  if (!target) {
+    return "The target collection could not be found.";
+  }
+  if (target.project_id !== ownCollection.project_id) {
+    return "The target collection must belong to the same project.";
+  }
+
+  return null;
+}
+
 const createFieldSchema = fieldBaseSchema.extend({
   widget: widgetTypeSchema,
   config: z.unknown(),
@@ -286,6 +320,15 @@ export async function createField(
 
   const collection = await findCollectionById(tenantId, collectionId);
   if (!collection) return NOT_FOUND;
+
+  if (widget === "relationship") {
+    const message = await validateRelationshipConfig(
+      tenantId,
+      collection,
+      widgetParsed.data.config,
+    );
+    if (message) return invalid({ config: [message] });
+  }
 
   const db = getTenantDb(tenantId);
   const id = randomUUID();
@@ -378,6 +421,18 @@ export async function updateField(
   });
   if (!widgetParsed.success) {
     return invalid({ config: [z.prettifyError(widgetParsed.error)] });
+  }
+
+  if (existing.widget === "relationship") {
+    const collection = await findCollectionById(tenantId, collectionId);
+    if (!collection) return NOT_FOUND;
+
+    const message = await validateRelationshipConfig(
+      tenantId,
+      collection,
+      widgetParsed.data.config,
+    );
+    if (message) return invalid({ config: [message] });
   }
 
   const db = getTenantDb(tenantId);
@@ -552,6 +607,28 @@ export async function countEntriesByCollection(
     .selectFrom("entries")
     .select((eb) => eb.fn.countAll().as("count"))
     .where("collection_id", "=", collectionId)
+    .executeTakeFirst();
+
+  return Number(row?.count ?? 0);
+}
+
+/**
+ * Drives the collection-delete warning: how many `relationship` fields
+ * elsewhere target this collection. A pure `fields`-table scan — cheap,
+ * unlike the entry-reference count in `src/lib/entries/service.ts`, which has
+ * to look inside `entry_values.value` JSON (design decision 4).
+ */
+export async function countRelationshipFieldsTargeting(
+  tenantId: string,
+  collectionId: string,
+): Promise<number> {
+  const row = await getTenantDb(tenantId)
+    .selectFrom("fields")
+    .select((eb) => eb.fn.countAll().as("count"))
+    .where("widget", "=", "relationship")
+    .where(
+      sql<boolean>`json_extract(config, '$.targetCollectionId') = ${collectionId}`,
+    )
     .executeTakeFirst();
 
   return Number(row?.count ?? 0);

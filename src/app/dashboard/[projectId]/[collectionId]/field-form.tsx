@@ -81,6 +81,8 @@ export type FieldFormProps = {
     required: boolean;
     config: Record<string, unknown>;
   };
+  /** Other collections in the same project — valid `relationship` targets. */
+  relationshipTargets?: Array<{ id: string; name: string }>;
   onDone?: () => void;
 };
 
@@ -88,6 +90,7 @@ export function FieldForm({
   projectId,
   collectionId,
   field,
+  relationshipTargets = [],
   onDone,
 }: FieldFormProps) {
   const editing = field !== undefined;
@@ -156,6 +159,7 @@ export function FieldForm({
           widget={editing ? field.widget : widget}
           config={field?.config}
           errors={state.fieldErrors?.config}
+          relationshipTargets={relationshipTargets}
         />
       </div>
 

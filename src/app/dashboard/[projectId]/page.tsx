@@ -6,6 +6,7 @@ import { Button, Card, CardBody, CardTitle, ConfirmDialog } from "@frontend/ui";
 import { requireSession } from "@/lib/auth";
 import {
   countEntriesByCollection,
+  countRelationshipFieldsTargeting,
   listCollections,
 } from "@/lib/collections/service";
 import { findProject } from "@/lib/projects/service";
@@ -42,6 +43,11 @@ export default async function ProjectPage({ params }: Params) {
   const entryCounts = await Promise.all(
     collections.map((collection) =>
       countEntriesByCollection(session.user.tenantId, collection.id),
+    ),
+  );
+  const relationshipFieldCounts = await Promise.all(
+    collections.map((collection) =>
+      countRelationshipFieldsTargeting(session.user.tenantId, collection.id),
     ),
   );
 
@@ -117,6 +123,19 @@ export default async function ProjectPage({ params }: Params) {
                             else is affected.
                           </>
                         )}
+                        {relationshipFieldCounts[index] > 0 ? (
+                          <>
+                            {" "}
+                            <strong>
+                              {relationshipFieldCounts[index]}{" "}
+                              {relationshipFieldCounts[index] === 1
+                                ? "relationship field"
+                                : "relationship fields"}
+                            </strong>{" "}
+                            in other collections target this collection and
+                            will stop working.
+                          </>
+                        ) : null}
                       </ConfirmDialog>
                     </div>
                   </CardBody>

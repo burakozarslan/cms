@@ -10,7 +10,7 @@ import {
   listFields,
   resolveTitleField,
 } from "@/lib/collections/service";
-import { findEntry } from "@/lib/entries/service";
+import { countEntriesReferencing, findEntry } from "@/lib/entries/service";
 
 import { EntryForm } from "../entry-form";
 import { EntryActions } from "./entry-actions";
@@ -41,6 +41,7 @@ export default async function EntryPage({ params }: Params) {
   if (!entry) notFound();
 
   const fields = await listFields(tenantId, collectionId);
+  const referencingCount = await countEntriesReferencing(tenantId, entry.id);
 
   const titleField = resolveTitleField(collection, fields);
   const titleValue = titleField ? entry.values[titleField.id] : undefined;
@@ -71,6 +72,7 @@ export default async function EntryPage({ params }: Params) {
             entryId={entry.id}
             status={entry.status}
             title={title}
+            referencingCount={referencingCount}
           />
         </div>
       </div>

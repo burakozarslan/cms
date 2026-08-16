@@ -22,6 +22,7 @@ import {
   validateEntryValues,
   type FieldParseResult,
   type ParsedField,
+  type RelationshipConfig,
 } from "@/lib/widgets";
 
 export const ENTRY_STATUSES = ["draft", "published"] as const;
@@ -220,6 +221,84 @@ function slugSource(
   return typeof raw === "string" ? raw : "";
 }
 
+/**
+ * Confirm every id submitted for a `relationship` field actually exists in
+ * that field's target collection, right now.
+ *
+ * This is the one check in the save path that cannot be a synchronous Zod
+ * schema (`entry-schema.ts`'s `valueSchema` already validated shape — a
+ * string, or an array of them): it needs a database read (design decision
+ * 1-2). Ids are grouped by target collection first, so a save touching several
+ * relationship fields that share a target still issues one query per distinct
+ * collection, not one per field.
+ */
+async function validateRelationshipReferences(
+  tenantId: string,
+  fields: ReadonlyArray<FieldParseResult>,
+  values: Record<string, unknown>,
+): Promise<FieldErrors | null> {
+  const relationshipFields = fields.filter(
+    (field): field is ParsedField =>
+      field.ok && field.widget === "relationship",
+  );
+  if (relationshipFields.length === 0) return null;
+
+  const idsByCollection = new Map<string, Set<string>>();
+
+  for (const field of relationshipFields) {
+    const raw = values[field.id];
+    if (raw === undefined) continue;
+
+    const { targetCollectionId } = field.config as RelationshipConfig;
+    const ids = Array.isArray(raw) ? raw : [raw];
+    const set = idsByCollection.get(targetCollectionId) ?? new Set<string>();
+    for (const id of ids) {
+      if (typeof id === "string") set.add(id);
+    }
+    idsByCollection.set(targetCollectionId, set);
+  }
+
+  if (idsByCollection.size === 0) return null;
+
+  const db = getTenantDb(tenantId);
+  const existingByCollection = new Map<string, Set<string>>();
+
+  for (const [targetCollectionId, ids] of idsByCollection) {
+    const rows = await db
+      .selectFrom("entries")
+      .select("id")
+      .where("collection_id", "=", targetCollectionId)
+      .where("id", "in", [...ids])
+      .execute();
+
+    existingByCollection.set(targetCollectionId, new Set(rows.map((r) => r.id)));
+  }
+
+  const fieldErrors: FieldErrors = {};
+
+  for (const field of relationshipFields) {
+    const raw = values[field.id];
+    if (raw === undefined) continue;
+
+    const { targetCollectionId } = field.config as RelationshipConfig;
+    const existing = existingByCollection.get(targetCollectionId) ?? new Set();
+    const ids = Array.isArray(raw) ? raw : [raw];
+    const missing = ids.filter(
+      (id) => typeof id === "string" && !existing.has(id),
+    );
+
+    if (missing.length > 0) {
+      fieldErrors[field.id] = [
+        missing.length === 1
+          ? "The referenced entry no longer exists."
+          : `${missing.length} referenced entries no longer exist.`,
+      ];
+    }
+  }
+
+  return Object.keys(fieldErrors).length > 0 ? fieldErrors : null;
+}
+
 const createEntryInputSchema = z.object({
   values: z.record(z.string(), z.unknown()).default({}),
   status: entryStatusSchema.default("draft"),
@@ -246,6 +325,13 @@ export async function createEntry(
     schema,
   );
   if (!validated.ok) return invalid(validated.fieldErrors);
+
+  const relationshipErrors = await validateRelationshipReferences(
+    tenantId,
+    fields,
+    validated.values,
+  );
+  if (relationshipErrors) return invalid(relationshipErrors);
 
   const db = getTenantDb(tenantId);
 
@@ -339,6 +425,13 @@ export async function updateEntry(
   );
   if (!validated.ok) return invalid(validated.fieldErrors);
 
+  const relationshipErrors = await validateRelationshipReferences(
+    tenantId,
+    loaded.fields,
+    validated.values,
+  );
+  if (relationshipErrors) return invalid(relationshipErrors);
+
   const db = getTenantDb(tenantId);
 
   await db.transaction().execute(async (trx) => {
@@ -375,6 +468,64 @@ export async function deleteEntry(
     .execute();
 
   return { ok: true };
+}
+
+/**
+ * Options for a `relationship` field's picker: every entry in the target
+ * collection, labelled the same way the entry list labels them (design
+ * decision 5 — reuses `listEntries`, no second title-resolution path).
+ *
+ * `undefined` means the target collection itself does not exist (deleted, or
+ * never did) — distinct from an empty array, which means the collection
+ * exists but has no entries yet. The picker uses that distinction to show
+ * "target collection no longer exists" instead of an empty list.
+ */
+export async function listEntryOptions(
+  tenantId: string,
+  collectionId: string,
+): Promise<Array<{ id: string; label: string }> | undefined> {
+  const collection = await findCollectionById(tenantId, collectionId);
+  if (!collection) return undefined;
+
+  const entries = await listEntries(tenantId, collectionId);
+  return entries.map((entry) => ({ id: entry.id, label: entry.title }));
+}
+
+/**
+ * Drives the entry-delete warning: how many other entries reference this one
+ * through a `relationship` field.
+ *
+ * `entry_values.value` holds a bare JSON string in single mode or a JSON array
+ * in multiple mode; `json_each` normalizes both by wrapping a non-array value
+ * in `json_array()` first. This is the first use of `json_extract`/`json_each`
+ * in this codebase (design decision 4) — the original content-model design
+ * explicitly deferred it, and it earns its place here because there is no
+ * other representation of "which entries reference this one" to query
+ * against.
+ *
+ * Raw SQL bypasses `TenantScopePlugin` (it only rewrites queries built through
+ * the query builder), so tenant scoping is applied by hand on both joined
+ * tables rather than relied upon.
+ */
+export async function countEntriesReferencing(
+  tenantId: string,
+  entryId: string,
+): Promise<number> {
+  const result = await sql<{ count: number }>`
+    SELECT COUNT(DISTINCT ev.entry_id) as count
+    FROM entry_values ev
+    JOIN fields f ON f.id = ev.field_id AND f.tenant_id = ${tenantId}
+    JOIN json_each(
+      CASE
+        WHEN json_type(ev.value) = 'array' THEN ev.value
+        ELSE json_array(json(ev.value))
+      END
+    ) je ON je.value = ${entryId}
+    WHERE f.widget = 'relationship'
+      AND ev.tenant_id = ${tenantId}
+  `.execute(getTenantDb(tenantId));
+
+  return Number(result.rows[0]?.count ?? 0);
 }
 
 export async function setEntryStatus(

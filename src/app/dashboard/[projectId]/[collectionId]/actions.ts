@@ -15,6 +15,7 @@ import {
 import {
   createEntry,
   deleteEntry,
+  listEntryOptions,
   setEntryStatus,
   updateEntry,
 } from "@/lib/entries/service";
@@ -189,6 +190,26 @@ export async function setTitleFieldAction(formData: FormData): Promise<void> {
 
   revalidatePath(`${collectionPath(target)}/fields`);
   redirect(`${collectionPath(target)}/fields`);
+}
+
+/**
+ * Options for a `relationship` field's picker.
+ *
+ * `null` means the target collection itself is unresolvable (deleted since
+ * the field was configured) — distinct from an empty array, which means the
+ * collection exists but has no entries yet.
+ */
+export async function listRelationshipOptionsAction(
+  targetCollectionId: string,
+): Promise<Array<{ id: string; label: string }> | null> {
+  const session = await requireSession();
+  if (!session) redirect("/login");
+
+  const options = await listEntryOptions(
+    session.user.tenantId,
+    targetCollectionId,
+  );
+  return options ?? null;
 }
 
 // ---------------------------------------------------------------------------

@@ -61,3 +61,5 @@ export { booleanConfigSchema } from "./boolean";
 export type { BooleanConfig } from "./boolean";
 export { datetimeConfigSchema } from "./datetime";
 export type { DatetimeConfig } from "./datetime";
+export { relationshipConfigSchema } from "./relationship";
+export type { RelationshipConfig } from "./relationship";

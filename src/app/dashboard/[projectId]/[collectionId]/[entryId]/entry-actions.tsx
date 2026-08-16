@@ -16,12 +16,15 @@ export function EntryActions({
   entryId,
   status,
   title,
+  referencingCount,
 }: {
   projectId: string;
   collectionId: string;
   entryId: string;
   status: string;
   title: string;
+  /** How many other entries reference this one through a relationship field. */
+  referencingCount: number;
 }) {
   const published = status === "published";
   const ids = { projectId, collectionId, entryId };
@@ -58,6 +61,17 @@ export function EntryActions({
       >
         This permanently deletes the entry and every value stored against it.
         The collection&rsquo;s fields are unaffected.
+        {referencingCount > 0 ? (
+          <>
+            {" "}
+            <strong>
+              {referencingCount} other{" "}
+              {referencingCount === 1 ? "entry" : "entries"}
+            </strong>{" "}
+            reference this one through a relationship field; those references
+            will break.
+          </>
+        ) : null}
       </ConfirmDialog>
     </div>
   );
