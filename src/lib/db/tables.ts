@@ -19,6 +19,7 @@ export const TENANT_SCOPED_TABLES = [
   "fields",
   "entries",
   "entry_values",
+  "tenant_media_config",
 ] as const;
 
 export type TenantScopedTable = (typeof TENANT_SCOPED_TABLES)[number];

@@ -79,6 +79,21 @@ export interface EntryValuesTable {
   value: string;
 }
 
+export interface TenantMediaConfigTable {
+  /** Primary key: one config per tenant, enforced by the schema. */
+  tenant_id: TenantId;
+  cloud_name: string;
+  api_key: string;
+  /** `encrypt()`-produced `<iv>:<tag>:<ciphertext>`, never the plaintext. */
+  api_secret_enc: string;
+  /** Null until the first connection check runs. */
+  last_checked_at: string | null;
+  /** SQLite has no boolean: 0, 1, or null (not yet checked). */
+  last_check_ok: number | null;
+  created_at: Generated<string>;
+  updated_at: Generated<string>;
+}
+
 export interface DB {
   tenants: TenantsTable;
   users: UsersTable;
@@ -87,4 +102,5 @@ export interface DB {
   fields: FieldsTable;
   entries: EntriesTable;
   entry_values: EntryValuesTable;
+  tenant_media_config: TenantMediaConfigTable;
 }
