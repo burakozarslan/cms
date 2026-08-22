@@ -2,12 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button, Dropdown, DropdownItem } from "@frontend/ui";
-import { requireSession, signOut } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 
-async function signOutAction() {
-  "use server";
-  await signOut({ redirectTo: "/login" });
-}
+import { signOutAction } from "./actions";
 
 export default async function DashboardLayout({
   children,
