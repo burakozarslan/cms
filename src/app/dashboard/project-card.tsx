@@ -18,7 +18,7 @@ export function ProjectCard({
   const [editing, setEditing] = useState(false);
 
   return (
-    <Card className="bg-base-100 hover:border-primary border-base-content/10 border shadow-sm transition-colors">
+    <Card className="bg-base-100 hover:border-primary/50 hover:shadow-lg border-base-content/10 border shadow-sm transition-all duration-300 transform hover:-translate-y-1">
       <CardBody>
         {editing ? (
           <RenameProjectForm
@@ -30,15 +30,15 @@ export function ProjectCard({
           <div className="flex items-start justify-between gap-2">
             <Link
               href={`/dashboard/${project.id}`}
-              className="block flex-1 no-underline"
+              className="block flex-1 no-underline group"
             >
-              <CardTitle className="text-base">{project.name}</CardTitle>
-              <p className="text-base-content/60 font-mono text-xs">
+              <CardTitle className="text-lg group-hover:text-primary transition-colors">{project.name}</CardTitle>
+              <p className="text-base-content/60 font-mono text-xs mt-1 bg-base-200/50 inline-block px-2 py-0.5 rounded">
                 {project.slug}
               </p>
             </Link>
 
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
               <Button
                 type="button"
                 variant="ghost"
@@ -50,7 +50,7 @@ export function ProjectCard({
 
               <ConfirmDialog
                 trigger={
-                  <Button type="button" variant="ghost" size="xs">
+                  <Button type="button" variant="ghost" size="xs" className="hover:text-error hover:bg-error/10">
                     Delete
                   </Button>
                 }
@@ -63,12 +63,12 @@ export function ProjectCard({
                 {counts.collections > 0 || counts.entries > 0 ? (
                   <>
                     This will permanently delete{" "}
-                    <strong>
+                    <strong className="text-error">
                       {counts.collections}{" "}
                       {counts.collections === 1 ? "collection" : "collections"}
                     </strong>{" "}
                     and{" "}
-                    <strong>
+                    <strong className="text-error">
                       {counts.entries} {counts.entries === 1 ? "entry" : "entries"}
                     </strong>
                     . This cannot be undone.
