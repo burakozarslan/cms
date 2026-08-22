@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireSession } from "@/lib/auth";
+import { requireSession, signOut } from "@/lib/auth";
 import { createProject, deleteProject, updateProject } from "@/lib/projects/service";
 
 export type CreateProjectState = {
@@ -65,4 +65,8 @@ export async function deleteProjectAction(formData: FormData): Promise<void> {
   await deleteProject(session.user.tenantId, projectId);
 
   revalidatePath("/dashboard");
+}
+
+export async function signOutAction(): Promise<void> {
+  await signOut({ redirectTo: "/login" });
 }
