@@ -104,6 +104,30 @@ describe("configFromForm", () => {
       fieldWidgetSchema.safeParse({ widget: "boolean", config }).success,
     ).toBe(true);
   });
+
+  it("reads an image field's maxSizeMB and allowedFormats", () => {
+    const config = compactConfig(
+      configFromForm(
+        "image",
+        form({
+          "config.maxSizeMB": "5",
+          "config.allowedFormats": "jpg\npng, webp",
+        }),
+      ),
+    );
+
+    expect(config).toEqual({
+      maxSizeMB: 5,
+      allowedFormats: ["jpg", "png", "webp"],
+    });
+  });
+
+  it("omits allowedFormats entirely when the textarea is blank", () => {
+    const config = compactConfig(
+      configFromForm("image", form({ "config.allowedFormats": "" })),
+    );
+    expect(config).toEqual({});
+  });
 });
 
 describe("select options round-trip", () => {
@@ -210,6 +234,39 @@ describe("valuesFromForm", () => {
 
   it("passes malformed richtext JSON through as-is, for the value schema to reject", () => {
     const field = fieldOf("f1", "richtext");
+    expect(
+      valuesFromForm([field], form({ [valueInputName("f1")]: "{not json" })),
+    ).toEqual({ f1: "{not json" });
+  });
+
+  it("parses the image hidden input's JSON into an asset object", () => {
+    const field = fieldOf("f1", "image");
+    const asset = {
+      secureUrl: "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+      publicId: "sample",
+      width: 800,
+      height: 600,
+      format: "jpg",
+      bytes: 12345,
+    };
+
+    expect(
+      valuesFromForm(
+        [field],
+        form({ [valueInputName("f1")]: JSON.stringify(asset) }),
+      ),
+    ).toEqual({ f1: asset });
+  });
+
+  it("reads a blank image submission as absent, not as an empty string", () => {
+    const field = fieldOf("f1", "image");
+    expect(valuesFromForm([field], form({ [valueInputName("f1")]: "" }))).toEqual(
+      {},
+    );
+  });
+
+  it("passes malformed image JSON through as-is, for the value schema to reject", () => {
+    const field = fieldOf("f1", "image");
     expect(
       valuesFromForm([field], form({ [valueInputName("f1")]: "{not json" })),
     ).toEqual({ f1: "{not json" });

@@ -23,6 +23,11 @@ function bool(config: ConfigRecord, key: string): boolean {
   return config[key] === true;
 }
 
+function formatList(config: ConfigRecord): string {
+  const value = config.allowedFormats;
+  return Array.isArray(value) ? value.join("\n") : "";
+}
+
 /**
  * The configuration form for one widget type, rendered from the registry's
  * shape for that type.
@@ -217,6 +222,29 @@ export function WidgetConfigInputs({
               to reference it here.
             </p>
           ) : null}
+        </>
+      );
+
+    case "image":
+      return (
+        <>
+          <Input
+            label="Maximum file size, in MB (optional)"
+            name="config.maxSizeMB"
+            type="number"
+            min={1}
+            step="any"
+            defaultValue={num(config, "maxSizeMB")}
+          />
+          <Textarea
+            label="Allowed formats (optional)"
+            name="config.allowedFormats"
+            rows={3}
+            placeholder={"jpg\npng\nwebp"}
+            hint="One per line. Leave blank to allow any image format."
+            defaultValue={formatList(config)}
+            error={error}
+          />
         </>
       );
   }

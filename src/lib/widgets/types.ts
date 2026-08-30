@@ -9,7 +9,8 @@ export type WidgetType =
   | "boolean"
   | "datetime"
   | "richtext"
-  | "relationship";
+  | "relationship"
+  | "image";
 
 /**
  * One widget type's contract.

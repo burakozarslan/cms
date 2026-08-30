@@ -38,7 +38,7 @@ function storedRow(overrides: Partial<StoredFieldRow> = {}): StoredFieldRow {
 }
 
 describe("the widget type set", () => {
-  it("offers exactly the eight shipped types", () => {
+  it("offers exactly the nine shipped types", () => {
     expect([...widgetTypes]).toEqual([
       "string",
       "text",
@@ -48,6 +48,7 @@ describe("the widget type set", () => {
       "datetime",
       "richtext",
       "relationship",
+      "image",
     ]);
   });
 
@@ -408,6 +409,60 @@ describe("relationship widget", () => {
       value("relationship", { targetCollectionId: "c1" }, "not-a-real-id")
         .success,
     ).toBe(true);
+  });
+});
+
+describe("image widget", () => {
+  const asset = {
+    secureUrl: "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+    publicId: "sample",
+    width: 800,
+    height: 600,
+    format: "jpg",
+    bytes: 12345,
+  };
+
+  it("accepts an empty config and explicit maxSizeMB/allowedFormats", () => {
+    expect(config("image", {}).success).toBe(true);
+    expect(
+      config("image", { maxSizeMB: 5, allowedFormats: ["jpg", "png"] })
+        .success,
+    ).toBe(true);
+  });
+
+  it("rejects a non-positive maxSizeMB", () => {
+    expect(config("image", { maxSizeMB: 0 }).success).toBe(false);
+    expect(config("image", { maxSizeMB: -1 }).success).toBe(false);
+  });
+
+  it("accepts a well-formed asset value", () => {
+    expect(value("image", {}, asset).success).toBe(true);
+  });
+
+  it("rejects a value missing secureUrl or publicId", () => {
+    const { secureUrl, ...withoutUrl } = asset;
+    void secureUrl;
+    expect(value("image", {}, withoutUrl).success).toBe(false);
+
+    const { publicId, ...withoutPublicId } = asset;
+    void publicId;
+    expect(value("image", {}, withoutPublicId).success).toBe(false);
+  });
+
+  it("rejects non-positive width, height, or bytes", () => {
+    expect(value("image", {}, { ...asset, width: 0 }).success).toBe(false);
+    expect(value("image", {}, { ...asset, height: -1 }).success).toBe(false);
+    expect(value("image", {}, { ...asset, bytes: 0 }).success).toBe(false);
+  });
+
+  it("rejects a secureUrl that is not a URL", () => {
+    expect(
+      value("image", {}, { ...asset, secureUrl: "not-a-url" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a bare URL string, since the stored value is the full asset object", () => {
+    expect(value("image", {}, asset.secureUrl).success).toBe(false);
   });
 });
 
