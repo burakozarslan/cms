@@ -108,6 +108,20 @@ export function configFromForm(
         multiple: checkbox(form, "config.multiple"),
       };
 
+    case "image":
+      return {
+        maxSizeMB: optionalNumber(form.get("config.maxSizeMB")),
+        allowedFormats: (() => {
+          const raw = form.get("config.allowedFormats");
+          if (typeof raw !== "string" || raw.trim() === "") return undefined;
+          const formats = raw
+            .split(/[\n,]/)
+            .map((entry) => entry.trim())
+            .filter((entry) => entry !== "");
+          return formats.length > 0 ? formats : undefined;
+        })(),
+      };
+
     case "datetime":
       return {
         dateOnly: checkbox(form, "config.dateOnly"),
@@ -163,7 +177,8 @@ function valueFromForm(field: ParsedField, form: FormData): unknown {
       return config.valueType === "string" ? raw : Number(raw);
     }
 
-    case "richtext": {
+    case "richtext":
+    case "image": {
       const raw = form.get(name);
       if (typeof raw !== "string" || raw.trim() === "") return undefined;
       try {

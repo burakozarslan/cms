@@ -1,6 +1,7 @@
 import { Input, Select, Switch, Textarea } from "@frontend/ui";
 import { valueInputName, type ParsedField } from "@/lib/widgets";
 
+import { ImagePicker } from "./image-picker";
 import { RelationshipPicker } from "./relationship-picker";
 import { RichTextEditor } from "./richtext-editor";
 
@@ -167,6 +168,23 @@ export function ValueInput({
           label={label}
           targetCollectionId={config.targetCollectionId}
           multiple={config.multiple ?? false}
+          value={value}
+          error={error}
+        />
+      );
+    }
+
+    case "image": {
+      const config = field.config as {
+        maxSizeMB?: number;
+        allowedFormats?: string[];
+      };
+      return (
+        <ImagePicker
+          fieldId={field.id}
+          label={field.label}
+          required={field.required}
+          config={config}
           value={value}
           error={error}
         />

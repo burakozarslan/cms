@@ -260,6 +260,81 @@ describe("richtext values", () => {
   });
 });
 
+describe("image values", () => {
+  const asset = {
+    secureUrl: "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+    publicId: "sample",
+    width: 800,
+    height: 600,
+    format: "jpg",
+    bytes: 12345,
+  };
+
+  it("accepts and stores a well-formed asset value", async () => {
+    const collection = await makeCollection(tenant, project, "Gallery");
+    const cover = await makeField(tenant, collection, {
+      key: "cover",
+      widget: "image",
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: { [cover]: asset },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entry.values[cover]).toEqual(asset);
+  });
+
+  it("rejects a value missing the required asset fields", async () => {
+    const collection = await makeCollection(tenant, project, "MalformedImage");
+    const cover = await makeField(tenant, collection, {
+      key: "cover",
+      widget: "image",
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: { [cover]: { secureUrl: asset.secureUrl } },
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("names the field when a required image value is absent", async () => {
+    const collection = await makeCollection(tenant, project, "RequiredCover");
+    const cover = await makeField(tenant, collection, {
+      key: "cover",
+      label: "Cover",
+      widget: "image",
+      required: true,
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: {},
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.error !== "INVALID") return;
+    expect(result.fieldErrors[cover]?.[0]).toMatch(/Cover is required/);
+  });
+
+  it("stores no row for an optional image field left absent", async () => {
+    const collection = await makeCollection(tenant, project, "OptionalCover");
+    const cover = await makeField(tenant, collection, {
+      key: "cover",
+      widget: "image",
+    });
+
+    const result = await entries.createEntry(tenant, collection, {
+      values: {},
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entry.values[cover]).toBeUndefined();
+  });
+});
+
 describe("relationship values", () => {
   it("accepts a reference to an entry that exists in the target collection", async () => {
     const author = await makeCollection(tenant, project, "Author RV1");

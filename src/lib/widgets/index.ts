@@ -63,3 +63,5 @@ export { datetimeConfigSchema } from "./datetime";
 export type { DatetimeConfig } from "./datetime";
 export { relationshipConfigSchema } from "./relationship";
 export type { RelationshipConfig } from "./relationship";
+export { imageConfigSchema, imageValueSchema } from "./image";
+export type { ImageConfig, ImageValue } from "./image";
