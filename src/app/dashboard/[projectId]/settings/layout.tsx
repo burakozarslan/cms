@@ -33,6 +33,10 @@ export default async function ProjectSettingsLayout({
       href: `/dashboard/${projectId}/settings/webhooks`,
       label: "Webhooks",
     },
+    {
+      href: `/dashboard/${projectId}/settings/api-docs`,
+      label: "API docs",
+    },
   ];
 
   return (
