@@ -50,12 +50,16 @@ export function FieldList({
   fields,
   titleFieldId,
   relationshipTargets = [],
+  hasActiveApiKeys = false,
 }: {
   projectId: string;
   collectionId: string;
   fields: FieldView[];
   titleFieldId: string | null;
   relationshipTargets?: Array<{ id: string; name: string }>;
+  /** Whether the enclosing project has at least one active API key — drives
+   *  the field-editor's key-rename warning. */
+  hasActiveApiKeys?: boolean;
 }) {
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>();
@@ -233,6 +237,7 @@ export function FieldList({
                       config: field.config,
                     }}
                     relationshipTargets={relationshipTargets}
+                    hasActiveApiKeys={hasActiveApiKeys}
                     onDone={() => setEditing(undefined)}
                   />
                 </div>

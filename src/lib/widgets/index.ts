@@ -61,7 +61,10 @@ export { booleanConfigSchema } from "./boolean";
 export type { BooleanConfig } from "./boolean";
 export { datetimeConfigSchema } from "./datetime";
 export type { DatetimeConfig } from "./datetime";
-export { relationshipConfigSchema } from "./relationship";
-export type { RelationshipConfig } from "./relationship";
+export { relationshipConfigSchema, isRelationshipToApiValue } from "./relationship";
+export type { RelationshipConfig, RelationshipToApiValue } from "./relationship";
 export { imageConfigSchema, imageValueSchema } from "./image";
 export type { ImageConfig, ImageValue } from "./image";
+
+export { renderRichText, richtextRenderNodes, UnknownRichTextNodeError } from "./richtext-render";
+export type { RenderedRichText } from "./richtext-render";

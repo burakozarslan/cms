@@ -94,6 +94,24 @@ export interface TenantMediaConfigTable {
   updated_at: Generated<string>;
 }
 
+export interface ApiKeysTable {
+  id: string;
+  tenant_id: TenantId;
+  project_id: string;
+  name: string;
+  /** The token's indexed lookup segment. Plain text — not secret. */
+  key_id: string;
+  /** SHA-256 hex digest of the token's secret segment. Never the secret. */
+  secret_hash: string;
+  mode: Generated<string>;
+  /** Null if the creating user's account has since been deleted. */
+  created_by_user_id: string | null;
+  created_at: Generated<string>;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  expires_at: string | null;
+}
+
 export interface DB {
   tenants: TenantsTable;
   users: UsersTable;
@@ -103,4 +121,5 @@ export interface DB {
   entries: EntriesTable;
   entry_values: EntryValuesTable;
   tenant_media_config: TenantMediaConfigTable;
+  api_keys: ApiKeysTable;
 }

@@ -12,6 +12,13 @@
  * `tenants` and `users` are deliberately NOT listed: they are identity tables
  * used before a tenant context exists (registration, login), not tenant-owned
  * content.
+ *
+ * `api_keys` is a third category: tenant-owned content with a dashboard CRUD
+ * surface (so it belongs here, unlike `tenants`/`users`) that *also* has to be
+ * resolved before a tenant context exists — a request presents a token, not a
+ * session. That pre-context lookup is confined to the single `getRootDb()`
+ * carve-out in `src/lib/api-keys/resolve.ts`; every other access goes through
+ * this scoping like any other tenant-owned table.
  */
 export const TENANT_SCOPED_TABLES = [
   "projects",
@@ -20,6 +27,7 @@ export const TENANT_SCOPED_TABLES = [
   "entries",
   "entry_values",
   "tenant_media_config",
+  "api_keys",
 ] as const;
 
 export type TenantScopedTable = (typeof TENANT_SCOPED_TABLES)[number];

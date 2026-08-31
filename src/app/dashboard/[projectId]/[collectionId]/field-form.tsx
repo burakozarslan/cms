@@ -83,6 +83,9 @@ export type FieldFormProps = {
   };
   /** Other collections in the same project — valid `relationship` targets. */
   relationshipTargets?: Array<{ id: string; name: string }>;
+  /** Whether the project has at least one active API key — when true, editing
+   *  an existing field warns that its key is read by the content API. */
+  hasActiveApiKeys?: boolean;
   onDone?: () => void;
 };
 
@@ -91,6 +94,7 @@ export function FieldForm({
   collectionId,
   field,
   relationshipTargets = [],
+  hasActiveApiKeys = false,
   onDone,
 }: FieldFormProps) {
   const editing = field !== undefined;
@@ -134,6 +138,13 @@ export function FieldForm({
           error={state.fieldErrors?.key?.[0]}
         />
       </div>
+
+      {editing && hasActiveApiKeys ? (
+        <Alert tone="warning" variant="soft">
+          This field&apos;s key is read by the content API. Renaming it will
+          break consumers referencing <code>fields.{field.key}</code>.
+        </Alert>
+      ) : null}
 
       {editing ? (
         <>

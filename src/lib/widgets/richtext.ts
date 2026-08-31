@@ -1,10 +1,8 @@
 import { createHeadlessEditor } from "@lexical/headless";
-import { LinkNode } from "@lexical/link";
-import { ListItemNode, ListNode } from "@lexical/list";
-import { HeadingNode } from "@lexical/rich-text";
 import { $getRoot, type LexicalEditor } from "lexical";
 import { z } from "zod";
 
+import { renderRichText, richtextRenderNodes } from "./richtext-render";
 import type { WidgetDefinition } from "./types";
 
 /**
@@ -16,23 +14,20 @@ export const richtextConfigSchema = z.strictObject({});
 export type RichtextConfig = z.infer<typeof richtextConfigSchema>;
 
 /**
- * The node types the fixed toolbar can produce — headings, lists, links. Core
- * nodes (paragraph, text, line break, root) are registered by every Lexical
- * editor regardless of this list.
- */
-const richtextNodes = [HeadingNode, ListNode, ListItemNode, LinkNode];
-
-/**
  * A throwaway editor used only to parse and inspect a serialized document,
  * never to render one. Structural validity is Lexical's own responsibility —
  * `parseEditorState` throws on a tree its registered nodes cannot represent —
  * so this is the enforcement point, not a hand-written schema of Lexical's
  * node shapes (design decision 1).
+ *
+ * Built from `richtextRenderNodes` — the same closed set the API renderer
+ * registers (`richtext-render.ts`) — so validation and rendering can never
+ * disagree about which node types exist.
  */
 function createValidationEditor(): LexicalEditor {
   return createHeadlessEditor({
     namespace: "richtext-validation",
-    nodes: richtextNodes,
+    nodes: richtextRenderNodes,
     onError: (error) => {
       throw error;
     },
@@ -86,5 +81,14 @@ export const richtextWidget: WidgetDefinition<RichtextConfig> = {
     } catch {
       return false;
     }
+  },
+  /**
+   * `{ html, text }`, not the raw Lexical tree (design decision 9) — almost no
+   * consumer can render a Lexical editor state, and shipping it would make a
+   * Lexical upgrade a breaking API change. `text` reuses the same
+   * `getTextContent()` traversal `isEmpty` performs above.
+   */
+  toApi(value) {
+    return renderRichText(createValidationEditor(), value);
   },
 };

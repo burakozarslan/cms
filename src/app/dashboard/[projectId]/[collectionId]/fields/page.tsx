@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 import { Button, Card, CardBody, CardTitle, Select } from "@frontend/ui";
+import { countActiveApiKeys } from "@/lib/api-keys/service";
 import { requireSession } from "@/lib/auth";
 import {
   countValuesByField,
@@ -52,6 +53,10 @@ export default async function FieldBuilderPage({ params }: Params) {
   const fields = await listFields(tenantId, collectionId);
   const valueCounts = await countValuesByField(tenantId, collectionId);
 
+  // Drives the rename warning: a field's `key` is the content API's
+  // identifier once the project is consumed externally (design.md decision 5).
+  const activeApiKeyCount = await countActiveApiKeys(tenantId, projectId);
+
   // The only valid `relationship` targets: other collections in this project
   // (design decision 7 — same-project, no self-reference).
   const projectCollections = await listCollections(tenantId, projectId);
@@ -98,6 +103,7 @@ export default async function FieldBuilderPage({ params }: Params) {
             fields={views}
             titleFieldId={collection.title_field_id}
             relationshipTargets={relationshipTargets}
+            hasActiveApiKeys={activeApiKeyCount > 0}
           />
         </CardBody>
       </Card>

@@ -50,4 +50,20 @@ export const datetimeWidget: WidgetDefinition<DatetimeConfig> = {
           : "Must be a valid date and time.",
       });
   },
+  /**
+   * Storage is not normalized — `Date.parse` accepts many forms, so two
+   * identical instants can be stored as different strings today (design
+   * decision 7). `dateOnly` values are already a calendar date, not an
+   * instant, so they pass through unchanged rather than being coerced to
+   * midnight UTC, which would be an off-by-one-day bug in western timezones.
+   */
+  toApi(value, config) {
+    if (typeof value !== "string") return null;
+    if (config.dateOnly === true) return value;
+
+    const parsed = Date.parse(value);
+    if (Number.isNaN(parsed)) return null;
+
+    return new Date(parsed).toISOString();
+  },
 };

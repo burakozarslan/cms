@@ -38,4 +38,12 @@ export type WidgetDefinition<TConfig = unknown> = {
    * Defaults to the generic check when absent.
    */
   isEmpty?(value: unknown, config: TConfig): boolean;
+  /**
+   * The outbound counterpart to `valueSchema`: derives the value delivered by
+   * the content API from the stored value. Defaults to identity when absent —
+   * most widgets' stored shape already *is* their public shape. This is what
+   * makes a widget's API shape one module, not a `switch` in the serializer
+   * (design.md decision 6).
+   */
+  toApi?(value: unknown, config: TConfig): unknown;
 };
