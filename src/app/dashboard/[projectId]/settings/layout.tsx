@@ -29,6 +29,10 @@ export default async function ProjectSettingsLayout({
       href: `/dashboard/${projectId}/settings/api-keys`,
       label: "API keys",
     },
+    {
+      href: `/dashboard/${projectId}/settings/webhooks`,
+      label: "Webhooks",
+    },
   ];
 
   return (

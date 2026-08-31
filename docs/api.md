@@ -4,8 +4,10 @@ A versioned, key-authenticated, read-only JSON API over a project's published
 content. Server-to-server only — see [CORS](#cors).
 
 Everything under `/api/v1` is Phase 1 of the headless roadmap: authentication,
-key management, and delivery. Caching, rate limiting, webhooks, filtering,
+key management, and delivery. Caching, rate limiting, filtering,
 relational expansion (`?expand=`), and write access are later phases.
+Webhooks — outbound notifications when content changes — are documented
+separately below; they are not part of `/api/v1`.
 
 ## Authentication
 
@@ -201,6 +203,90 @@ secret credential, so it is deliberately not callable from a browser. A
 publishable-key class with a per-key origin allowlist, safe for
 browser use, is a later, additive change — not something to work around by
 proxying today's keys through your own server-side code.
+
+## Webhooks
+
+A project's **Settings → Webhooks** page lets you subscribe a target URL —
+typically a static-site host's build hook — to content events, so it can
+trigger a rebuild instead of polling the Content Delivery API.
+
+### Events
+
+| Event               | Fires when…                                             |
+| -------------------- | -------------------------------------------------------- |
+| `entry.published`    | An entry transitions from draft to published             |
+| `entry.unpublished`  | A published entry is reverted to draft                   |
+| `entry.deleted`      | A *published* entry is deleted (a draft's deletion emits nothing) |
+| `webhook.test`       | Only via the "Send test ping" action in the dashboard     |
+
+A webhook only receives deliveries for the events it is subscribed to, from
+its own project. Disabling a webhook stops deliveries immediately.
+
+### Payload
+
+Each delivery is an HTTP `POST` with a JSON body:
+
+```json
+{
+  "event": "entry.published",
+  "projectId": "prj_…",
+  "collectionId": "col_…",
+  "entryId": "ent_…",
+  "occurredAt": "2026-08-31T12:00:00.000Z"
+}
+```
+
+`collectionId` and `entryId` are omitted from a `webhook.test` ping's body.
+The payload intentionally carries identifiers, not content — fetch the
+entry itself from the Content Delivery API using your project's key if you
+need its values.
+
+### Verifying a delivery
+
+Every delivery carries three headers:
+
+```
+X-Webhook-Signature: sha256=<hex>
+X-Webhook-Event: entry.published
+X-Webhook-Delivery: <uuid>
+```
+
+`X-Webhook-Signature` is an HMAC-SHA256, hex-encoded, computed over the
+**raw request body** using your webhook's signing secret (shown once at
+creation, in **Settings → Webhooks**). Recompute it the same way and
+compare in constant time before trusting a delivery:
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function isValid(rawBody, signatureHeader, secret) {
+  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+  const presented = Buffer.from(signatureHeader.replace("sha256=", ""), "hex");
+  const expectedBuf = Buffer.from(expected, "hex");
+  return (
+    presented.length === expectedBuf.length &&
+    timingSafeEqual(presented, expectedBuf)
+  );
+}
+```
+
+`X-Webhook-Delivery` is stable across retries of the same delivery — use it
+to deduplicate if your endpoint isn't naturally idempotent.
+
+### Retries
+
+A delivery is retried on any non-`2xx` response, a timeout, or a connection
+failure, with exponential backoff, up to a bounded number of attempts —
+after which it is marked failed and not retried automatically (you can
+redeliver it by hand from the dashboard). A `2xx` response — any status in
+that range — stops further attempts. Your endpoint should respond quickly
+and idempotently; treat delivery as at-least-once, not exactly-once.
+
+### Security
+
+Webhook target URLs must be public — a target resolving to a private,
+loopback, or link-local address is rejected both when you save it and
+again at delivery time.
 
 ## The field-key rename hazard
 
