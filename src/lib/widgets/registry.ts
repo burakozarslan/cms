@@ -22,11 +22,12 @@ import type { WidgetDefinition, WidgetType } from "./types";
  */
 export type ErasedWidget = Omit<
   WidgetDefinition<unknown>,
-  "configSchema" | "valueSchema" | "isEmpty"
+  "configSchema" | "valueSchema" | "isEmpty" | "toApi"
 > & {
   readonly configSchema: z.ZodType;
   valueSchema(config: unknown): z.ZodType;
   isEmpty?(value: unknown, config: unknown): boolean;
+  toApi?(value: unknown, config: unknown): unknown;
 };
 
 function erase<TConfig>(definition: WidgetDefinition<TConfig>): ErasedWidget {
@@ -39,6 +40,9 @@ function erase<TConfig>(definition: WidgetDefinition<TConfig>): ErasedWidget {
     valueSchema: (config) => definition.valueSchema(config as TConfig),
     isEmpty: definition.isEmpty
       ? (value, config) => definition.isEmpty!(value, config as TConfig)
+      : undefined,
+    toApi: definition.toApi
+      ? (value, config) => definition.toApi!(value, config as TConfig)
       : undefined,
   };
 }

@@ -41,4 +41,15 @@ export const imageWidget: WidgetDefinition<ImageConfig> = {
     // output of a successful upload, never hand-typed.
     return imageValueSchema;
   },
+  /**
+   * `secureUrl` → `url`: "secure" is Cloudinary's vocabulary, not the
+   * consumer's, and every URL here is https anyway (design decision 7).
+   */
+  toApi(value) {
+    const parsed = imageValueSchema.safeParse(value);
+    if (!parsed.success) return null;
+
+    const { secureUrl, publicId, width, height, format, bytes } = parsed.data;
+    return { url: secureUrl, publicId, width, height, format, bytes };
+  },
 };

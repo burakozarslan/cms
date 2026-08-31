@@ -32,4 +32,43 @@ export const relationshipWidget: WidgetDefinition<RelationshipConfig> = {
     const one = z.string().trim().min(1, "Choose an entry.");
     return config.multiple ? z.array(one) : one;
   },
+  /**
+   * Unlike every other widget, `relationship` cannot produce its delivered
+   * form alone: resolving an id to `{ id, slug, collection }` needs a batch
+   * database lookup, which is out of reach for a synchronous, per-value
+   * function (design decision 8). This intermediate shape — a normalized id
+   * array plus whether the field is `multiple` — is what
+   * `src/lib/api/serialize.ts` collects across the whole response, resolves
+   * with one batched query per target collection, and substitutes back in.
+   */
+  toApi(value, config): RelationshipToApiValue {
+    const ids = Array.isArray(value) ? value : value === undefined ? [] : [value];
+    return {
+      __relationship: true,
+      ids: ids.filter((id): id is string => typeof id === "string"),
+      multiple: config.multiple === true,
+      targetCollectionId: config.targetCollectionId,
+    };
+  },
 };
+
+/**
+ * The intermediate value `relationship.toApi` produces. Not part of the
+ * public API response — `serializeEntry` recognizes and replaces it.
+ */
+export type RelationshipToApiValue = {
+  __relationship: true;
+  ids: string[];
+  multiple: boolean;
+  targetCollectionId: string;
+};
+
+export function isRelationshipToApiValue(
+  value: unknown,
+): value is RelationshipToApiValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { __relationship?: unknown }).__relationship === true
+  );
+}

@@ -61,6 +61,28 @@ export async function makeField(
   return result.field.id;
 }
 
+export async function makeApiKey(
+  tenantId: string,
+  projectId: string,
+  name = "Test key",
+): Promise<{ token: string; keyId: string }> {
+  const { createApiKey } = await import("@/lib/api-keys/service");
+  const { getRootDb } = await import("@/lib/db/client");
+
+  const user = await getRootDb()
+    .selectFrom("users")
+    .select("id")
+    .where("tenant_id", "=", tenantId)
+    .executeTakeFirst();
+  if (!user) throw new Error(`fixture api key failed: no user for tenant ${tenantId}`);
+
+  const result = await createApiKey(tenantId, projectId, user.id, name);
+  if (!result.ok) {
+    throw new Error(`fixture api key failed: ${JSON.stringify(result)}`);
+  }
+  return { token: result.token, keyId: result.apiKey.key_id };
+}
+
 export async function makeEntry(
   tenantId: string,
   collectionId: string,
