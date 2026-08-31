@@ -112,6 +112,45 @@ export interface ApiKeysTable {
   expires_at: string | null;
 }
 
+export interface WebhooksTable {
+  id: string;
+  tenant_id: TenantId;
+  project_id: string;
+  name: string;
+  target_url: string;
+  /** JSON array of subscribed event type strings. */
+  events: string;
+  /** `encrypt()`-produced `<iv>:<tag>:<ciphertext>`, never the plaintext. */
+  secret_enc: string;
+  /** Masked form shown in the list, e.g. `whsec_ab12…`. Not secret. */
+  secret_prefix: string;
+  /** SQLite has no boolean: 0 or 1. */
+  enabled: Generated<number>;
+  /** Null if the creating user's account has since been deleted. */
+  created_by_user_id: string | null;
+  created_at: Generated<string>;
+  updated_at: Generated<string>;
+}
+
+export interface WebhookDeliveriesTable {
+  id: string;
+  tenant_id: TenantId;
+  webhook_id: string;
+  /** Stable across retries of the same delivery, so receivers can dedupe. */
+  delivery_uuid: string;
+  event_type: string;
+  /** The exact JSON body sent (or to be sent) — kept for signing on retry
+   *  and for manual redelivery. */
+  payload: string;
+  status: Generated<string>;
+  attempt_count: Generated<number>;
+  next_attempt_at: Generated<string>;
+  last_status_code: number | null;
+  last_error: string | null;
+  created_at: Generated<string>;
+  updated_at: Generated<string>;
+}
+
 export interface DB {
   tenants: TenantsTable;
   users: UsersTable;
@@ -122,4 +161,6 @@ export interface DB {
   entry_values: EntryValuesTable;
   tenant_media_config: TenantMediaConfigTable;
   api_keys: ApiKeysTable;
+  webhooks: WebhooksTable;
+  webhook_deliveries: WebhookDeliveriesTable;
 }

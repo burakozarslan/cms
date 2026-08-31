@@ -28,6 +28,8 @@ export const TENANT_SCOPED_TABLES = [
   "entry_values",
   "tenant_media_config",
   "api_keys",
+  "webhooks",
+  "webhook_deliveries",
 ] as const;
 
 export type TenantScopedTable = (typeof TENANT_SCOPED_TABLES)[number];

@@ -16,6 +16,7 @@ import {
 import { getTenantDb } from "@/lib/db/client";
 import type { DB } from "@/lib/db/types";
 import { nextAvailableSlug, slugify } from "@/lib/projects/slug";
+import { enqueueWebhookDelivery } from "@/lib/webhooks/delivery";
 import {
   getEntrySchema,
   isEmptyValue,
@@ -467,6 +468,22 @@ export async function deleteEntry(
     .where("collection_id", "=", collectionId)
     .execute();
 
+  // Only a published entry's disappearance is relevant to a webhook
+  // consumer — deleting a draft never affected anything they could see
+  // (content-entries, "Deleting a draft entry emits no event").
+  if (existing.status === "published") {
+    const collection = await findCollectionById(tenantId, collectionId);
+    if (collection) {
+      await enqueueWebhookDelivery({
+        type: "entry.deleted",
+        tenantId,
+        projectId: collection.project_id,
+        collectionId,
+        entryId,
+      });
+    }
+  }
+
   return { ok: true };
 }
 
@@ -548,6 +565,23 @@ export async function setEntryStatus(
     .where("id", "=", entryId)
     .where("collection_id", "=", collectionId)
     .execute();
+
+  // A no-op status save (same value resubmitted) emits nothing — only an
+  // actual transition is meaningful to a webhook consumer.
+  if (parsed.data !== existing.status) {
+    const eventType =
+      parsed.data === "published" ? "entry.published" : "entry.unpublished";
+    const collection = await findCollectionById(tenantId, collectionId);
+    if (collection) {
+      await enqueueWebhookDelivery({
+        type: eventType,
+        tenantId,
+        projectId: collection.project_id,
+        collectionId,
+        entryId,
+      });
+    }
+  }
 
   return { ok: true };
 }

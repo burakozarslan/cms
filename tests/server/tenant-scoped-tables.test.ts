@@ -103,8 +103,12 @@ describe("TENANT_SCOPED_TABLES", () => {
  * `tenant-data-access` → "The carve-out does not spread"). Every module that
  * imports it must be either the module that defines it, an identity flow that
  * predates a tenant context (registration, login, password change — all of
- * which touch only the `users`/`tenants` identity tables), or the single
- * `api_keys` credential-resolution module.
+ * which touch only the `users`/`tenants` identity tables), the single
+ * `api_keys` credential-resolution module, or the webhook delivery worker's
+ * cross-tenant queue poll (add-webhook-rebuild-trigger design.md — the
+ * worker doesn't know which tenant a due row belongs to until it reads one;
+ * every write it issues afterwards re-applies `tenant_id` as an explicit
+ * predicate through `getTenantDb`).
  */
 describe("getRootDb() importers", () => {
   const SRC_ROOT = join(__dirname, "..", "..", "src");
@@ -115,6 +119,7 @@ describe("getRootDb() importers", () => {
     "lib/auth/change-password.ts", // reads `users` by session-provided id
     "lib/tenants/register.ts", // registration: no tenant context yet
     "lib/api-keys/resolve.ts", // the one credential-resolution carve-out
+    "lib/webhooks/delivery.ts", // cross-tenant delivery queue poll
   ]);
 
   const IMPORT_PATTERN =
