@@ -88,6 +88,11 @@ The system SHALL validate every submitted value on the server against a schema d
 - **WHEN** an entry is saved referencing an entry id that is not a current member of "Author"
 - **THEN** the system rejects the save with a validation error
 
+#### Scenario: Image value must be well-formed Cloudinary asset metadata
+- **GIVEN** an `image` field
+- **WHEN** a save is submitted with a value that is not a well-formed asset metadata object (missing secure URL or public identifier, or of the wrong shape)
+- **THEN** the system rejects the save with a validation error
+
 #### Scenario: Validation reflects the current field definitions
 - **GIVEN** a field's configuration is changed after an entry editor was opened
 - **WHEN** that editor submits a save
