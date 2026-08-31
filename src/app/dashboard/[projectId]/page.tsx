@@ -53,12 +53,21 @@ export default async function ProjectPage({ params }: Params) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link href="/dashboard" className="link link-primary text-sm">
-          ← All projects
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-1">
+          <Link href="/dashboard" className="link link-primary text-sm">
+            ← All projects
+          </Link>
+          <h1 className="text-xl font-semibold">{project.name}</h1>
+          <p className="text-base-content/60 font-mono text-xs">{project.slug}</p>
+        </div>
+
+        <Link
+          href={`/dashboard/${projectId}/settings`}
+          className="link link-primary text-sm shrink-0"
+        >
+          Project settings
         </Link>
-        <h1 className="text-xl font-semibold">{project.name}</h1>
-        <p className="text-base-content/60 font-mono text-xs">{project.slug}</p>
       </div>
 
       {collections.length === 0 ? (
