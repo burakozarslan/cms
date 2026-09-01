@@ -1,15 +1,17 @@
 const ALLOWED_PARAMS = new Set(["limit", "offset", "order", "direction"]);
 
 /** A closed set, never interpolated — see `resolve-target.ts` and the route
- *  handlers, which map these directly to `orderBy` calls. */
-const ORDER_COLUMNS = ["created_at", "updated_at"] as const;
+ *  handlers, which map these directly to `orderBy` calls. Exported so the
+ *  GraphQL list-field arguments (`src/lib/api/graphql/list-args.ts`) validate
+ *  against the exact same set rather than a second, driftable copy. */
+export const ORDER_COLUMNS = ["created_at", "updated_at"] as const;
 export type OrderColumn = (typeof ORDER_COLUMNS)[number];
 
-const DIRECTIONS = ["asc", "desc"] as const;
+export const DIRECTIONS = ["asc", "desc"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
+export const DEFAULT_LIMIT = 20;
+export const MAX_LIMIT = 100;
 
 export type ListQuery = {
   limit: number;
@@ -20,11 +22,11 @@ export type ListQuery = {
 
 export type ListQueryResult = { ok: true; query: ListQuery } | { ok: false; message: string };
 
-function isOrderColumn(value: string): value is OrderColumn {
+export function isOrderColumn(value: string): value is OrderColumn {
   return (ORDER_COLUMNS as readonly string[]).includes(value);
 }
 
-function isDirection(value: string): value is Direction {
+export function isDirection(value: string): value is Direction {
   return (DIRECTIONS as readonly string[]).includes(value);
 }
 
