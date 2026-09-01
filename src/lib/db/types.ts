@@ -1,0 +1,166 @@
+import type { ColumnType, Generated } from "kysely";
+
+/**
+ * The owning tenant on a tenant-scoped table.
+ *
+ * Optional on insert and forbidden on update: `TenantScopePlugin` stamps it
+ * from the session, so setting it by hand is at best redundant and at worst an
+ * attempt to write into another tenant.
+ */
+type TenantId = ColumnType<string, string | undefined, never>;
+
+export interface TenantsTable {
+  id: string;
+  name: string;
+  created_at: Generated<string>;
+}
+
+export interface UsersTable {
+  id: string;
+  tenant_id: string;
+  email: string;
+  password_hash: string;
+  created_at: Generated<string>;
+}
+
+export interface ProjectsTable {
+  id: string;
+  tenant_id: TenantId;
+  name: string;
+  slug: string;
+  created_at: Generated<string>;
+}
+
+export interface CollectionsTable {
+  id: string;
+  tenant_id: TenantId;
+  project_id: string;
+  name: string;
+  slug: string;
+  /** Null until designated, and nulled again if that field is deleted. */
+  title_field_id: string | null;
+  /** Cache key component; bumped by every schema-mutating transaction. */
+  schema_version: Generated<number>;
+  created_at: Generated<string>;
+}
+
+export interface FieldsTable {
+  id: string;
+  tenant_id: TenantId;
+  collection_id: string;
+  key: string;
+  label: string;
+  /** A widget type name; validated by the registry, not by the database. */
+  widget: string;
+  /** SQLite has no boolean: 0 or 1. */
+  required: Generated<number>;
+  position: number;
+  /** JSON, shape determined by `widget`. */
+  config: Generated<string>;
+  created_at: Generated<string>;
+}
+
+export interface EntriesTable {
+  id: string;
+  tenant_id: TenantId;
+  collection_id: string;
+  slug: string;
+  status: Generated<string>;
+  created_at: Generated<string>;
+  updated_at: Generated<string>;
+}
+
+export interface EntryValuesTable {
+  id: string;
+  tenant_id: TenantId;
+  entry_id: string;
+  field_id: string;
+  /** JSON, shape determined by the field's widget and config. */
+  value: string;
+}
+
+export interface TenantMediaConfigTable {
+  /** Primary key: one config per tenant, enforced by the schema. */
+  tenant_id: TenantId;
+  cloud_name: string;
+  api_key: string;
+  /** `encrypt()`-produced `<iv>:<tag>:<ciphertext>`, never the plaintext. */
+  api_secret_enc: string;
+  /** Null until the first connection check runs. */
+  last_checked_at: string | null;
+  /** SQLite has no boolean: 0, 1, or null (not yet checked). */
+  last_check_ok: number | null;
+  created_at: Generated<string>;
+  updated_at: Generated<string>;
+}
+
+export interface ApiKeysTable {
+  id: string;
+  tenant_id: TenantId;
+  project_id: string;
+  name: string;
+  /** The token's indexed lookup segment. Plain text — not secret. */
+  key_id: string;
+  /** SHA-256 hex digest of the token's secret segment. Never the secret. */
+  secret_hash: string;
+  mode: Generated<string>;
+  /** Null if the creating user's account has since been deleted. */
+  created_by_user_id: string | null;
+  created_at: Generated<string>;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  expires_at: string | null;
+}
+
+export interface WebhooksTable {
+  id: string;
+  tenant_id: TenantId;
+  project_id: string;
+  name: string;
+  target_url: string;
+  /** JSON array of subscribed event type strings. */
+  events: string;
+  /** `encrypt()`-produced `<iv>:<tag>:<ciphertext>`, never the plaintext. */
+  secret_enc: string;
+  /** Masked form shown in the list, e.g. `whsec_ab12…`. Not secret. */
+  secret_prefix: string;
+  /** SQLite has no boolean: 0 or 1. */
+  enabled: Generated<number>;
+  /** Null if the creating user's account has since been deleted. */
+  created_by_user_id: string | null;
+  created_at: Generated<string>;
+  updated_at: Generated<string>;
+}
+
+export interface WebhookDeliveriesTable {
+  id: string;
+  tenant_id: TenantId;
+  webhook_id: string;
+  /** Stable across retries of the same delivery, so receivers can dedupe. */
+  delivery_uuid: string;
+  event_type: string;
+  /** The exact JSON body sent (or to be sent) — kept for signing on retry
+   *  and for manual redelivery. */
+  payload: string;
+  status: Generated<string>;
+  attempt_count: Generated<number>;
+  next_attempt_at: Generated<string>;
+  last_status_code: number | null;
+  last_error: string | null;
+  created_at: Generated<string>;
+  updated_at: Generated<string>;
+}
+
+export interface DB {
+  tenants: TenantsTable;
+  users: UsersTable;
+  projects: ProjectsTable;
+  collections: CollectionsTable;
+  fields: FieldsTable;
+  entries: EntriesTable;
+  entry_values: EntryValuesTable;
+  tenant_media_config: TenantMediaConfigTable;
+  api_keys: ApiKeysTable;
+  webhooks: WebhooksTable;
+  webhook_deliveries: WebhookDeliveriesTable;
+}
