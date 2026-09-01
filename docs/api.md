@@ -147,6 +147,75 @@ the two are indistinguishable.
 { "data": { "id": "e_01H…", "slug": "hello-world", "status": "published", "createdAt": "…", "updatedAt": "…", "fields": { "…": "…" } } }
 ```
 
+## GraphQL
+
+`POST /api/v1/graphql` is a GraphQL endpoint over the same published,
+project-scoped content the REST endpoints above expose — one request can
+describe an arbitrarily shaped, nested subset of collections and entries
+instead of walking a fixed REST shape across several round trips.
+
+It shares everything about REST except the transport: the same
+`Authorization: Bearer` / `X-API-Key` authentication, the same project
+scope (derived solely from the key), the same published-only, draft-`null`
+content rules, and the same [errors](#errors) codes (surfaced as
+`extensions.code` on each GraphQL error). There is no separate credential
+or scope to manage.
+
+The schema is generated from the key's project — one object type per
+collection, named from its slug (`blog-posts` → type `BlogPosts`), with a
+field per collection field typed the same way the REST schema endpoint
+reports a field's output type. It updates automatically as collections and
+fields change; no separate step publishes it.
+
+For each collection `<name>` (camelCased from its slug):
+
+- `<name>Entries(limit, offset, order, direction)` — a paginated list, same
+  defaults and cap as REST's `?limit=`/`?offset=`/`?order=`/`?direction=`,
+  returning `{ data, meta { total, limit, offset } }`
+- `<name>Entry(id)` — one entry, `id` accepting either a slug or an id
+  (same as REST's `:item` segment), `null` for a draft or unknown entry
+
+A `relationship` field is a nested, selectable field typed after its
+target collection — traverse it directly in the same query rather than
+issuing a follow-up request:
+
+```graphql
+query {
+  blogEntries(limit: 5) {
+    meta {
+      total
+    }
+    data {
+      id
+      slug
+      title
+      author {
+        name
+        email
+      }
+    }
+  }
+}
+```
+
+```jsonc
+// POST /api/v1/graphql
+// { "query": "{ blogEntry(id: \"hello-world\") { title body { html text } author { name } } }" }
+{
+  "data": {
+    "blogEntry": {
+      "title": "Hello World",
+      "body": { "html": "<p>…</p>", "text": "…" },
+      "author": { "name": "Ada" }
+    }
+  }
+}
+```
+
+The endpoint is read-only: a document containing a mutation or subscription
+operation is rejected before any resolver runs, with an `INVALID_QUERY`
+error, the same as any other unsupported query.
+
 ## Entry values
 
 Every field declared on the collection appears on every entry, keyed by the

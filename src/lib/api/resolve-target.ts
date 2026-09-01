@@ -107,6 +107,59 @@ export type ListPublishedEntriesOptions = {
 };
 
 /**
+ * Published entries in one collection, addressed by id, values attached.
+ *
+ * The relationship-batching counterpart to `resolveEntry`: instead of one
+ * slug-or-id lookup, this resolves many ids from the same target collection
+ * in a single pair of queries (entries, then their values), the same shape
+ * `resolveReferences` already batches for REST. Used by the GraphQL relation
+ * loader, which needs full field values for nested selections rather than
+ * just the `{ id, slug, collection }` reference REST returns.
+ */
+export async function findEntriesByIds(
+  tenantId: string,
+  collectionId: string,
+  ids: ReadonlyArray<string>,
+): Promise<Entry[]> {
+  if (ids.length === 0) return [];
+
+  const db = getTenantDb(tenantId);
+
+  const rows = await db
+    .selectFrom("entries")
+    .select(["id", "collection_id", "slug", "status", "created_at", "updated_at"])
+    .where("collection_id", "=", collectionId)
+    .where("status", "=", "published")
+    .where("id", "in", ids)
+    .execute();
+
+  if (rows.length === 0) return [];
+
+  const valueRows = await db
+    .selectFrom("entry_values")
+    .select(["entry_id", "field_id", "value"])
+    .where(
+      "entry_id",
+      "in",
+      rows.map((row) => row.id),
+    )
+    .execute();
+
+  const valuesByEntry = new Map<string, Record<string, unknown>>();
+  for (const row of valueRows) {
+    const values = valuesByEntry.get(row.entry_id) ?? {};
+    try {
+      values[row.field_id] = JSON.parse(row.value);
+    } catch {
+      // Treated as absent, same as `findEntry`/`listPublishedEntries`.
+    }
+    valuesByEntry.set(row.entry_id, values);
+  }
+
+  return rows.map((row) => ({ ...row, values: valuesByEntry.get(row.id) ?? {} }));
+}
+
+/**
  * A page of a collection's published entries, values attached, plus the
  * total published count.
  *

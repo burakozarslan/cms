@@ -25,7 +25,7 @@ export type SuccessExample = {
 };
 
 export type Endpoint = {
-  method: "GET";
+  method: "GET" | "POST";
   path: string;
   description: string;
   queryParams?: QueryParam[];
@@ -81,6 +81,42 @@ const INVALID_QUERY: ErrorResponse = {
     "code": "INVALID_QUERY",
     "message": "Unknown query parameter \\"limt\\"."
   }
+}`,
+};
+
+// The GraphQL endpoint's pre-execution auth failure reuses the same REST
+// `{ error: { code, message } }` envelope as `UNAUTHORIZED` above — the
+// request never reaches the GraphQL executor. Failures *during* execution
+// (validation or resolution) use GraphQL's own `{ data, errors }` envelope
+// instead, with the same closed code set surfaced as `extensions.code`.
+const GRAPHQL_INVALID_QUERY: ErrorResponse = {
+  status: 200,
+  code: "INVALID_QUERY",
+  meaning: "A malformed document, an unsupported operation (e.g. a mutation), or a query exceeding the depth limit.",
+  exampleJson: `{
+  "data": null,
+  "errors": [
+    {
+      "message": "The query could not be validated.",
+      "extensions": { "code": "INVALID_QUERY" }
+    }
+  ]
+}`,
+};
+
+const GRAPHQL_INTERNAL: ErrorResponse = {
+  status: 200,
+  code: "INTERNAL",
+  meaning: "An unexpected error while resolving one field — sibling fields still resolve.",
+  exampleJson: `{
+  "data": { "blogEntry": null },
+  "errors": [
+    {
+      "message": "An unexpected error occurred.",
+      "path": ["blogEntry"],
+      "extensions": { "code": "INTERNAL" }
+    }
+  ]
 }`,
 };
 
@@ -208,6 +244,26 @@ export const ENDPOINTS: Endpoint[] = [
       },
     ],
     errorResponses: [UNAUTHORIZED, NOT_FOUND, INTERNAL],
+  },
+  {
+    method: "POST",
+    path: "/api/v1/graphql",
+    description:
+      "A GraphQL endpoint over the same published, project-scoped content as the REST endpoints above — one request can describe an arbitrarily shaped, nested query instead of walking a fixed shape across several round trips. Read-only: a mutation or subscription operation is rejected before execution. The schema is generated from this project's collections and fields, and updates automatically as they change.",
+    successExamples: [
+      {
+        title: '200 OK — { "query": "{ blogEntry(id: \\"hello-world\\") { title author { name } } }" }',
+        json: `{
+  "data": {
+    "blogEntry": {
+      "title": "Hello World",
+      "author": { "name": "Ada" }
+    }
+  }
+}`,
+      },
+    ],
+    errorResponses: [UNAUTHORIZED, GRAPHQL_INVALID_QUERY, GRAPHQL_INTERNAL],
   },
 ];
 
